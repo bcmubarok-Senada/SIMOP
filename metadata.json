@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Operasional & Jadwal Petugas",
+  "description": "Aplikasi manajemen operasional terpadu: User, Jadwal Shift Petugas/TL/QA, Approval Cuti/Izin/Tukar Jadwal, Kategori Senada, Uji Pemahaman, dan Laporan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
