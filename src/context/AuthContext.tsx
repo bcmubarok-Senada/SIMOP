@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'Akun Anda telah dinonaktifkan. Hubungi Administrator.' };
       }
 
-      const isValid = await verifyPassword(pass, user.salt, user.passwordHash);
+      const isValid = await verifyPassword(pass.trim(), user.salt, user.passwordHash);
       if (!isValid) {
         return { success: false, error: 'Password yang Anda masukkan salah.' };
       }
@@ -126,6 +126,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         sessionStorage.setItem(AUTH_SESSION_KEY, user.id);
       }
+
+      // Record access and operational utilization
+      storageService.recordUserAccess(user.npp || identifier, true);
 
       // Log audit
       storageService.addAuditLog({

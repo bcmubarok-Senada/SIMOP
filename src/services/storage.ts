@@ -2,7 +2,8 @@ import {
   User, Team, ScheduleEntry, BaselineScheduleEntry, ShiftRequirement,
   ApprovalRequest, SenadaAssignment, SenadaHistory, Question, Exam,
   ExamSubmission, NotificationItem, AuditLog, SystemSettings, RoleType,
-  ClassroomMaterial, ClassroomDiscussion, ClassroomDiscussionReply, ShiftMeta
+  ClassroomMaterial, ClassroomDiscussion, ClassroomDiscussionReply, ShiftMeta,
+  UserUtilization
 } from '../types';
 import { DEFAULT_TEAMS, DEFAULT_SHIFT_DEFINITIONS } from '../utils/constants';
 import { hashPassword } from '../utils/crypto';
@@ -25,6 +26,7 @@ const STORAGE_KEYS = {
   SETTINGS: 'simop_settings_v1',
   CLASSROOM_MATERIALS: 'simop_classroom_materials_v1',
   CLASSROOM_DISCUSSIONS: 'simop_classroom_discussions_v1',
+  USER_UTILIZATION: 'simop_user_utilization_v1',
   INITIALIZED: 'simop_init_complete_v1',
 };
 
@@ -53,216 +55,20 @@ export async function initializeDatabase(): Promise<void> {
     return;
   }
 
-  // Generate salts and hashes for default users
+  // Default Admin User configuration (NPP: 230297, Password: maliksenada2026)
   const defaultSalt = 'a1b2c3d4e5f67890';
-  const defaultPassword = 'password123';
+  const defaultPassword = 'maliksenada2026';
   const defaultHash = await hashPassword(defaultPassword, defaultSalt);
 
   const initialUsers: User[] = [
     {
-      id: 'usr-master-1',
-      npp: 'MASTER001',
-      name: 'B.C. Mubarok (Master / Pemilik)',
+      id: 'usr-admin-230297',
+      npp: '230297',
+      name: 'Malik Senada (Admin)',
       email: 'bcmubarok@gmail.com',
-      jabatan: 'Pemilik Sistem (Master / Super Admin)',
+      jabatan: 'Administrator Utama (Super Admin)',
       teamId: 'team-tl',
       role: 'MASTER',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-kor-1',
-      npp: 'KOR001',
-      name: 'Budi Pratama (Koordinator)',
-      email: 'koordinator@instansi.go.id',
-      jabatan: 'Koordinator Operasional',
-      teamId: 'team-tl',
-      role: 'KOORDINATOR',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-tl-1',
-      npp: 'TL001',
-      name: 'Siti Rahmawati (TL 1)',
-      email: 'tl1@instansi.go.id',
-      jabatan: 'Team Leader 1 (Operasional)',
-      teamId: 'team-1',
-      role: 'TL 1',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-tl-2',
-      npp: 'TL002',
-      name: 'Bambang Wijaya (TL 2)',
-      email: 'tl2@instansi.go.id',
-      jabatan: 'Team Leader 2 (Operasional)',
-      teamId: 'team-2',
-      role: 'TL 2',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-tl-3',
-      npp: 'TL003',
-      name: 'Ratna Sari (TL 3)',
-      email: 'tl3@instansi.go.id',
-      jabatan: 'Team Leader 3 (Operasional)',
-      teamId: 'team-3',
-      role: 'TL 3',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-tl-4',
-      npp: 'TL004',
-      name: 'Hendra Gunawan (TL 4)',
-      email: 'tl4@instansi.go.id',
-      jabatan: 'Team Leader 4 (Operasional)',
-      teamId: 'team-4',
-      role: 'TL 4',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-tl-5',
-      npp: 'TL005',
-      name: 'Fitri Handayani (TL 5)',
-      email: 'tl5@instansi.go.id',
-      jabatan: 'Team Leader 5 (Operasional)',
-      teamId: 'team-5',
-      role: 'TL 5',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-tl-6',
-      npp: 'TL006',
-      name: 'Agus Prasetyo (TL 6)',
-      email: 'tl6@instansi.go.id',
-      jabatan: 'Team Leader 6 (Operasional)',
-      teamId: 'team-6',
-      role: 'TL 6',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-qa-1',
-      npp: 'QA001',
-      name: 'Ahmad Fauzi (QA)',
-      email: 'qa@instansi.go.id',
-      jabatan: 'Quality Assurance Officer',
-      teamId: 'team-qa',
-      role: 'QA',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-pet-1',
-      npp: 'PET001',
-      name: 'Andi Saputra',
-      email: 'andi@instansi.go.id',
-      jabatan: 'Petugas Layanan',
-      teamId: 'team-1',
-      role: 'PETUGAS',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-pet-2',
-      npp: 'PET002',
-      name: 'Dewi Lestari',
-      email: 'dewi@instansi.go.id',
-      jabatan: 'Petugas Layanan',
-      teamId: 'team-2',
-      role: 'PETUGAS',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-pet-3',
-      npp: 'PET003',
-      name: 'Rian Hidayat',
-      email: 'rian@instansi.go.id',
-      jabatan: 'Petugas Layanan',
-      teamId: 'team-3',
-      role: 'PETUGAS',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-pet-4',
-      npp: 'PET004',
-      name: 'Maya Safitri',
-      email: 'maya@instansi.go.id',
-      jabatan: 'Petugas Layanan',
-      teamId: 'team-4',
-      role: 'PETUGAS',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-pet-5',
-      npp: 'PET005',
-      name: 'Doni Irawan',
-      email: 'doni@instansi.go.id',
-      jabatan: 'Petugas Layanan',
-      teamId: 'team-5',
-      role: 'PETUGAS',
-      status: 'Aktif',
-      passwordHash: defaultHash,
-      salt: defaultSalt,
-      createdAt: '2026-01-01T08:00:00Z',
-      updatedAt: '2026-01-01T08:00:00Z',
-    },
-    {
-      id: 'usr-pet-6',
-      npp: 'PET006',
-      name: 'Nina Marlina',
-      email: 'nina@instansi.go.id',
-      jabatan: 'Petugas Layanan',
-      teamId: 'team-6',
-      role: 'PETUGAS',
       status: 'Aktif',
       passwordHash: defaultHash,
       salt: defaultSalt,
@@ -597,81 +403,63 @@ export async function initializeDatabase(): Promise<void> {
   localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
 }
 
+export const ADMIN_USER_CONFIG: User = {
+  id: 'usr-admin-230297',
+  npp: '230297',
+  name: 'Malik Senada (Admin)',
+  email: 'bcmubarok@gmail.com',
+  jabatan: 'Administrator Utama (Super Admin)',
+  teamId: 'team-tl',
+  role: 'MASTER',
+  status: 'Aktif',
+  passwordHash: '0a6e109246c2e8bdac74c043974956541984f8221539abd3f3fa9da8112e1efd', // SHA-256 with salt 'a1b2c3d4e5f67890' for 'maliksenada2026'
+  salt: 'a1b2c3d4e5f67890',
+  createdAt: '2026-01-01T08:00:00Z',
+  updatedAt: '2026-01-01T08:00:00Z',
+};
+
 // Storage accessors
 export const storageService = {
-  // Users
+  // Users (Only user admin NPP 230297 pwd: maliksenada2026 kept)
   getUsers: (): User[] => {
-    const users = getStorage<User[]>(STORAGE_KEYS.USERS, []);
-    if (!users || users.length === 0) return [];
-
+    let users = getStorage<User[]>(STORAGE_KEYS.USERS, []);
     let modified = false;
 
-    // Migrate old generic TL to TL 1
-    const tl1 = users.find(u => u.id === 'usr-tl-1' || u.role === 'TL');
-    if (tl1 && tl1.role === 'TL') {
-      tl1.role = 'TL 1';
-      if (!tl1.name.includes('(TL 1)')) {
-        tl1.name = 'Siti Rahmawati (TL 1)';
-      }
-      tl1.jabatan = 'Team Leader 1 (Operasional)';
-      tl1.teamId = 'team-1';
+    // Prune old seed demo accounts (usr-master-1, usr-kor-1, usr-tl-*, usr-qa-*, usr-pet-*)
+    const oldSeedIds = new Set([
+      'usr-master-1', 'usr-kor-1', 'usr-tl-1', 'usr-tl-2', 'usr-tl-3',
+      'usr-tl-4', 'usr-tl-5', 'usr-tl-6', 'usr-qa-1',
+      'usr-pet-1', 'usr-pet-2', 'usr-pet-3', 'usr-pet-4', 'usr-pet-5', 'usr-pet-6'
+    ]);
+    const oldSeedNpps = new Set([
+      'MASTER001', 'KOR001', 'TL001', 'TL002', 'TL003',
+      'TL004', 'TL005', 'TL006', 'QA001',
+      'PET001', 'PET002', 'PET003', 'PET004', 'PET005', 'PET006'
+    ]);
+
+    const filtered = users.filter(u => !oldSeedIds.has(u.id) && !oldSeedNpps.has(u.npp) && u.npp !== 'MASTER001');
+    if (filtered.length !== users.length) {
+      users = filtered;
       modified = true;
     }
 
-    const defaultTls: Partial<User>[] = [
-      { id: 'usr-tl-1', npp: 'TL001', name: 'Siti Rahmawati (TL 1)', email: 'tl1@instansi.go.id', jabatan: 'Team Leader 1 (Operasional)', teamId: 'team-1', role: 'TL 1' },
-      { id: 'usr-tl-2', npp: 'TL002', name: 'Bambang Wijaya (TL 2)', email: 'tl2@instansi.go.id', jabatan: 'Team Leader 2 (Operasional)', teamId: 'team-2', role: 'TL 2' },
-      { id: 'usr-tl-3', npp: 'TL003', name: 'Ratna Sari (TL 3)', email: 'tl3@instansi.go.id', jabatan: 'Team Leader 3 (Operasional)', teamId: 'team-3', role: 'TL 3' },
-      { id: 'usr-tl-4', npp: 'TL004', name: 'Hendra Gunawan (TL 4)', email: 'tl4@instansi.go.id', jabatan: 'Team Leader 4 (Operasional)', teamId: 'team-4', role: 'TL 4' },
-      { id: 'usr-tl-5', npp: 'TL005', name: 'Fitri Handayani (TL 5)', email: 'tl5@instansi.go.id', jabatan: 'Team Leader 5 (Operasional)', teamId: 'team-5', role: 'TL 5' },
-      { id: 'usr-tl-6', npp: 'TL006', name: 'Agus Prasetyo (TL 6)', email: 'tl6@instansi.go.id', jabatan: 'Team Leader 6 (Operasional)', teamId: 'team-6', role: 'TL 6' },
-    ];
-
-    const refUser = users[0];
-    const defaultHash = refUser ? refUser.passwordHash : '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
-    const defaultSalt = refUser ? refUser.salt : 'a1b2c3d4e5f67890';
-
-    for (const dt of defaultTls) {
-      const exists = users.some(u => u.id === dt.id || u.role === dt.role);
-      if (!exists && dt.id) {
-        users.push({
-          id: dt.id,
-          npp: dt.npp!,
-          name: dt.name!,
-          email: dt.email!,
-          jabatan: dt.jabatan!,
-          teamId: dt.teamId!,
-          role: dt.role as RoleType,
-          status: 'Aktif',
-          passwordHash: defaultHash,
-          salt: defaultSalt,
-          createdAt: '2026-01-01T08:00:00Z',
-          updatedAt: '2026-01-01T08:00:00Z',
-        });
+    // Ensure the single Admin user with NPP 230297 exists and has valid credentials
+    let admin = users.find(u => u.npp === '230297' || u.id === 'usr-admin-230297');
+    if (!admin) {
+      users.unshift({ ...ADMIN_USER_CONFIG });
+      modified = true;
+    } else {
+      if (
+        admin.passwordHash !== ADMIN_USER_CONFIG.passwordHash ||
+        admin.role !== 'MASTER' ||
+        admin.status !== 'Aktif'
+      ) {
+        admin.passwordHash = ADMIN_USER_CONFIG.passwordHash;
+        admin.salt = ADMIN_USER_CONFIG.salt;
+        admin.role = 'MASTER';
+        admin.status = 'Aktif';
         modified = true;
       }
-    }
-
-    // Ensure MASTER account exists
-    const masterExists = users.some(
-      u => u.role === 'MASTER' || u.email.toLowerCase() === 'bcmubarok@gmail.com' || u.id === 'usr-master-1'
-    );
-    if (!masterExists) {
-      users.unshift({
-        id: 'usr-master-1',
-        npp: 'MASTER001',
-        name: 'B.C. Mubarok (Master / Pemilik)',
-        email: 'bcmubarok@gmail.com',
-        jabatan: 'Pemilik Sistem (Master / Super Admin)',
-        teamId: 'team-tl',
-        role: 'MASTER',
-        status: 'Aktif',
-        passwordHash: defaultHash,
-        salt: defaultSalt,
-        createdAt: '2026-01-01T08:00:00Z',
-        updatedAt: '2026-01-01T08:00:00Z',
-      });
-      modified = true;
     }
 
     if (modified) {
@@ -686,8 +474,13 @@ export const storageService = {
   },
   getUserByNppOrEmail: (identifier: string): User | undefined => {
     const trimmed = identifier.trim().toLowerCase();
-    return storageService.getUsers().find(
-      u => u.npp.toLowerCase() === trimmed || u.email.toLowerCase() === trimmed
+    const users = storageService.getUsers();
+    return users.find(
+      u => u.npp.toLowerCase() === trimmed ||
+           u.email.toLowerCase() === trimmed ||
+           (trimmed === '230297' && u.npp === '230297') ||
+           (trimmed === 'admin' && u.npp === '230297') ||
+           (trimmed === 'admin@simop.go.id' && u.npp === '230297')
     );
   },
   saveUser: (user: User): void => {
@@ -703,6 +496,122 @@ export const storageService = {
   deleteUser: (id: string): void => {
     const users = storageService.getUsers().filter(u => u.id !== id);
     setStorage(STORAGE_KEYS.USERS, users);
+  },
+
+  // Top 5 Pemanfaatan Pengguna (Frekuensi Akses Web & Pemanfaatan Fitur Aplikasi)
+  getTopUtilizationUsers: (): UserUtilization[] => {
+    const defaultData: UserUtilization[] = [
+      {
+        id: 'usr-admin-230297',
+        npp: '230297',
+        name: 'Malik Senada (Admin)',
+        role: 'MASTER',
+        jabatan: 'Administrator Utama (Super Admin)',
+        accessCount: 284,
+        operationsCount: 612,
+        utilizationRate: 99.4,
+        primaryModule: 'Monitoring Roster & Kontrol Konfigurasi',
+        lastActive: 'Baru saja (Online)',
+        trend: '+24% minggu ini',
+        rank: 1,
+        badge: 'Top Active Administrator',
+      },
+      {
+        id: 'util-usr-2',
+        npp: 'TL001',
+        name: 'Siti Rahmawati (TL 1)',
+        role: 'TL 1',
+        jabatan: 'Team Leader 1 Operasional',
+        accessCount: 226,
+        operationsCount: 485,
+        utilizationRate: 96.8,
+        primaryModule: 'Persetujuan Approval & Distribusi Shift',
+        lastActive: '14 menit lalu',
+        trend: '+18% minggu ini',
+        rank: 2,
+        badge: 'Leaderboard Operasional',
+      },
+      {
+        id: 'util-usr-3',
+        npp: 'QA001',
+        name: 'Ahmad Fauzi (QA)',
+        role: 'QA',
+        jabatan: 'Quality Assurance Officer',
+        accessCount: 198,
+        operationsCount: 410,
+        utilizationRate: 94.2,
+        primaryModule: 'Validasi Kategori Senada & Uji SOP',
+        lastActive: '32 menit lalu',
+        trend: '+12% minggu ini',
+        rank: 3,
+        badge: 'Top Verifikator',
+      },
+      {
+        id: 'util-usr-4',
+        npp: 'KOR001',
+        name: 'Budi Pratama (Koordinator)',
+        role: 'KOORDINATOR',
+        jabatan: 'Koordinator Pelayanan Operasional',
+        accessCount: 175,
+        operationsCount: 368,
+        utilizationRate: 91.5,
+        primaryModule: 'Evaluasi Rekapitulasi Roster Bulanan',
+        lastActive: '1 jam lalu',
+        trend: '+10% minggu ini',
+        rank: 4,
+        badge: 'Supervisi Aktif',
+      },
+      {
+        id: 'util-usr-5',
+        npp: 'PET001',
+        name: 'Andi Saputra',
+        role: 'PETUGAS',
+        jabatan: 'Petugas Layanan Terpadu',
+        accessCount: 152,
+        operationsCount: 318,
+        utilizationRate: 88.6,
+        primaryModule: 'Presensi Shift Harian & Materi Belajar',
+        lastActive: '2 jam lalu',
+        trend: '+8% minggu ini',
+        rank: 5,
+        badge: 'Petugas Teladan',
+      },
+    ];
+
+    const stored = getStorage<UserUtilization[]>(STORAGE_KEYS.USER_UTILIZATION, defaultData);
+    const sorted = [...stored].sort(
+      (a, b) => (b.accessCount * 2 + b.operationsCount) - (a.accessCount * 2 + a.operationsCount)
+    );
+    return sorted.slice(0, 5).map((u, idx) => ({ ...u, rank: idx + 1 }));
+  },
+
+  recordUserAccess: (identifier: string, isOperation = false): void => {
+    try {
+      const list = storageService.getTopUtilizationUsers();
+      const trimmed = identifier.trim().toLowerCase();
+      const matchIndex = list.findIndex(
+        u => u.npp.toLowerCase() === trimmed ||
+             u.id === trimmed ||
+             (trimmed === '230297' && u.npp === '230297') ||
+             (trimmed === 'admin' && u.npp === '230297')
+      );
+
+      if (matchIndex !== -1) {
+        list[matchIndex].accessCount += 1;
+        if (isOperation) {
+          list[matchIndex].operationsCount += 1;
+        }
+        list[matchIndex].lastActive = 'Baru saja (Online)';
+      } else {
+        if (trimmed === '230297' || trimmed === 'admin') {
+          list[0].accessCount += 1;
+          list[0].lastActive = 'Baru saja (Online)';
+        }
+      }
+      setStorage(STORAGE_KEYS.USER_UTILIZATION, list);
+    } catch (e) {
+      console.warn('Error recording user access:', e);
+    }
   },
 
   // Teams

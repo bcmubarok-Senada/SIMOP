@@ -331,3 +331,19 @@ export interface ClassroomDiscussion {
   replies: ClassroomDiscussionReply[];
 }
 
+export interface UserUtilization {
+  id: string;
+  npp: string;
+  name: string;
+  role: string;
+  jabatan: string;
+  accessCount: number; // Frekuensi akses web / login
+  operationsCount: number; // Total aksi operasional / interaksi fitur
+  utilizationRate: number; // Persentase pemanfaatan (%)
+  primaryModule: string; // Modul yang paling sering dimanfaatkan
+  lastActive: string; // Waktu terakhir akses
+  trend: string; // e.g. '+24% minggu ini'
+  rank: number;
+  badge?: string;
+}
+

@@ -1,25 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { storageService } from '../../services/storage';
+import { UserUtilization } from '../../types';
 import {
   Eye,
   EyeOff,
   Lock,
   User as UserIcon,
   ArrowRight,
-  Calendar,
-  Layers,
-  GraduationCap,
-  Sparkles,
-  Crown,
   Clock,
   ShieldCheck,
   CheckCircle2,
   Activity,
   Zap,
-  Users,
   Sun,
   Sunset,
   Moon,
+  Trophy,
+  Flame,
+  Globe,
+  TrendingUp,
+  Award,
+  Sparkles,
+  BarChart3,
+  Calendar,
 } from 'lucide-react';
 import { SimopLogo } from '../ui/SimopLogo';
 
@@ -31,7 +35,12 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'form' | 'quick'>('form');
+
+  // Utilization Leaderboard state
+  const [utilizationPeriod, setUtilizationPeriod] = useState<'month' | 'all'>('month');
+  const [topUsers, setTopUsers] = useState<UserUtilization[]>(() => {
+    return storageService.getTopUtilizationUsers();
+  });
 
   // Real-time clock state
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -41,6 +50,11 @@ export const LoginPage: React.FC = () => {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Refresh top utilization users periodically or on mount
+  useEffect(() => {
+    setTopUsers(storageService.getTopUtilizationUsers());
   }, []);
 
   // Time-based dynamic greeting
@@ -66,7 +80,7 @@ export const LoginPage: React.FC = () => {
       return;
     }
     if (!password) {
-      setErrorMessage('Silakan masukkan Password Anda.');
+      setErrorMessage('Silakan masukkan Kata Sandi Anda.');
       return;
     }
 
@@ -76,30 +90,53 @@ export const LoginPage: React.FC = () => {
 
     if (!result.success && result.error) {
       setErrorMessage(result.error);
+    } else if (result.success) {
+      // Refresh top utilization users after successful login
+      setTopUsers(storageService.getTopUtilizationUsers());
     }
   };
 
-  const handleQuickLogin = async (id: string, pass: string = 'password123') => {
-    setIdentifier(id);
-    setPassword(pass);
-    setErrorMessage('');
-    setIsSubmitting(true);
-    const result = await login(id, pass, rememberMe);
-    setIsSubmitting(false);
-    if (!result.success && result.error) {
-      setErrorMessage(result.error);
+  // Rank badge styling helper
+  const getRankBadge = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return {
+          bg: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+          ring: 'ring-2 ring-amber-400/50 shadow-lg shadow-amber-500/20',
+          gradient: 'from-amber-500/20 via-yellow-500/10 to-transparent',
+          icon: <Trophy className="w-4 h-4 text-amber-400 animate-pulse" />,
+          label: 'Peringkat 1',
+        };
+      case 2:
+        return {
+          bg: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+          ring: 'ring-1 ring-sky-400/40',
+          gradient: 'from-sky-500/20 via-cyan-500/10 to-transparent',
+          icon: <Award className="w-4 h-4 text-sky-300" />,
+          label: 'Peringkat 2',
+        };
+      case 3:
+        return {
+          bg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+          ring: 'ring-1 ring-emerald-400/40',
+          gradient: 'from-emerald-500/20 via-teal-500/10 to-transparent',
+          icon: <Award className="w-4 h-4 text-emerald-400" />,
+          label: 'Peringkat 3',
+        };
+      default:
+        return {
+          bg: 'bg-slate-800 text-slate-300 border-white/10',
+          ring: '',
+          gradient: 'from-slate-800/40 to-transparent',
+          icon: <span className="font-bold text-xs">#{rank}</span>,
+          label: `Peringkat ${rank}`,
+        };
     }
-  };
-
-  const setFormQuickUser = (npp: string) => {
-    setIdentifier(npp);
-    setPassword('password123');
-    setErrorMessage('');
   };
 
   return (
     <div className="min-h-screen w-full bg-[#070e1b] text-slate-100 flex flex-col justify-between relative overflow-x-hidden selection:bg-emerald-500 selection:text-white">
-      {/* Dynamic Background Atmosphere (Not just plain white - rich navy cyber aurora) */}
+      {/* Dynamic Background Atmosphere (Rich Midnight Cyan / Emerald Aurora) */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         {/* Subtle radial aurora glows */}
         <div className="absolute -top-40 -left-40 w-[38rem] h-[38rem] bg-cyan-600/15 rounded-full blur-[120px] animate-pulse" />
@@ -156,7 +193,7 @@ export const LoginPage: React.FC = () => {
 
         {/* Live Clock & Operational Status */}
         <div className="flex items-center gap-3 sm:gap-4">
-          {/* Live System Uptime Status Pill */}
+          {/* Live System Status Pill */}
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-semibold backdrop-blur-md shadow-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 -ml-3" />
@@ -175,11 +212,11 @@ export const LoginPage: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex-1 flex flex-col justify-center">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-          {/* Left Column (Hero Content, Showcase & Feature Pills) */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* Dynamic Greeting & Operational Title */}
-            <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+          {/* Left Column: Headline & Top 5 Pemanfaatan Berdasarkan Pengguna Teraktif */}
+          <div className="lg:col-span-7 space-y-5">
+            {/* Dynamic Greeting & Institutional Heading */}
+            <div className="space-y-2.5">
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-800/80 border border-white/10 text-xs font-medium text-slate-300 backdrop-blur-md">
                 {greeting.icon}
                 <span>{greeting.text}, Rekan Petugas</span>
@@ -187,94 +224,203 @@ export const LoginPage: React.FC = () => {
                 <span className="text-emerald-400 font-semibold">Portal Layanan Terpadu</span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.12]">
-                <span className="block text-white">Satu Sistem,</span>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight leading-[1.15]">
+                <span className="block text-white">Satu Sistem Terpadu,</span>
                 <span className="block bg-gradient-to-r from-cyan-400 via-sky-300 to-emerald-400 bg-clip-text text-transparent">
-                  Kerja Lebih Mudah &amp; Terukur
+                  Manajemen Roster &amp; Operasional Petugas
                 </span>
               </h1>
 
-              <p className="text-slate-300/90 text-sm sm:text-base leading-relaxed max-w-xl font-normal">
-                SIMOP Terpadu menyatukan manajemen jadwal piket shift, monitoring presensi petugas,
-                sinkronisasi layanan Senada, dan pengujian kompetensi dalam satu platform terpusat.
+              <p className="text-slate-300/90 text-xs sm:text-sm leading-relaxed max-w-2xl font-normal">
+                SIMOP Terpadu mengintegrasikan pemantauan roster dinas 24/7, evaluasi kepatuhan kuota shift,
+                sinkronisasi penugasan Senada, dan pengujian kompetensi petugas secara terpusat.
               </p>
             </div>
 
-            {/* Interactive Feature Pills */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-950/50 border border-sky-500/30 text-sky-300 font-medium backdrop-blur-md">
-                <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />
-                <span>Jadwal Lengkap Petugas</span>
+            {/* TOP 5 PEMANFAATAN BERDASARKAN PENGGUNA TERAKTIF WIDGET */}
+            <div className="rounded-2xl border border-white/15 bg-slate-900/80 backdrop-blur-2xl p-4 sm:p-5 shadow-2xl shadow-cyan-950/40 relative overflow-hidden">
+              {/* Subtle accent glow */}
+              <div className="absolute -top-16 -right-16 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Widget Header & Period Filter */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-white/10 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 text-slate-950 flex items-center justify-center font-black shadow-md shadow-amber-500/20">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-1.5">
+                        <span>Top 5 Pemanfaatan Aplikasi</span>
+                        <Flame className="w-3.5 h-3.5 text-orange-400 animate-pulse" />
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950/80 border border-cyan-500/30 text-cyan-300">
+                        Live Telemetri
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Pengguna paling sering mengakses web &amp; memanfaatkan modul operasional
+                    </p>
+                  </div>
+                </div>
+
+                {/* Period Selector Tabs */}
+                <div className="flex bg-slate-950/70 p-0.5 rounded-xl border border-white/10 text-[11px] font-bold self-start sm:self-center">
+                  <button
+                    type="button"
+                    onClick={() => setUtilizationPeriod('month')}
+                    className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+                      utilizationPeriod === 'month'
+                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Bulan Berjalan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUtilizationPeriod('all')}
+                    className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+                      utilizationPeriod === 'all'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Akumulasi
+                  </button>
+                </div>
               </div>
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/50 border border-emerald-500/30 text-emerald-300 font-medium backdrop-blur-md">
-                <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Referensi Shift Dinamis</span>
+
+              {/* Leaderboard Items (Rank 1 to 5) */}
+              <div className="space-y-2.5">
+                {topUsers.map((user) => {
+                  const badge = getRankBadge(user.rank);
+                  const isTopOne = user.rank === 1;
+
+                  return (
+                    <div
+                      key={user.id}
+                      className={`relative rounded-xl border p-3 transition-all duration-200 bg-gradient-to-r ${badge.gradient} ${
+                        isTopOne
+                          ? 'border-amber-500/40 bg-slate-900/90 shadow-md shadow-amber-950/20'
+                          : 'border-white/10 bg-slate-900/60 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        {/* Left: Rank & Avatar & Details */}
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Rank Icon / Number */}
+                          <div
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 border ${badge.bg} font-black ${badge.ring}`}
+                          >
+                            {badge.icon}
+                          </div>
+
+                          {/* User Avatar with live status dot */}
+                          <div className="relative shrink-0">
+                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-800 border border-white/15 flex items-center justify-center font-bold text-xs text-white">
+                              {user.name.charAt(0)}
+                            </div>
+                            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900 animate-pulse" />
+                          </div>
+
+                          {/* Name, Role & NPP */}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs sm:text-sm font-bold text-white truncate">
+                                {user.name}
+                              </span>
+                              {user.badge && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-400/20 border border-amber-400/40 text-amber-300 uppercase">
+                                  {user.badge}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 flex-wrap">
+                              <span className="font-mono text-cyan-300">NPP: {user.npp}</span>
+                              <span className="text-slate-600">&bull;</span>
+                              <span className="text-slate-300 truncate">{user.role}</span>
+                              <span className="text-slate-600 hidden sm:inline">&bull;</span>
+                              <span className="text-slate-400 text-[10px] hidden sm:inline truncate">
+                                {user.primaryModule}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Access Metrics & Utilization Score */}
+                        <div className="text-right shrink-0 flex flex-col items-end">
+                          <div className="flex items-center gap-2">
+                            {/* Web Visits Pill */}
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-sky-950/60 border border-sky-500/30 text-sky-300 text-[10px] sm:text-xs font-bold">
+                              <Globe className="w-3 h-3 text-sky-400" />
+                              <span>{user.accessCount}x Akses Web</span>
+                            </div>
+
+                            {/* Operations Count */}
+                            <div className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-[10px] sm:text-xs font-bold">
+                              <Zap className="w-3 h-3 text-emerald-400" />
+                              <span>{user.operationsCount} Aksi</span>
+                            </div>
+                          </div>
+
+                          {/* Utilization Score Progress Bar */}
+                          <div className="flex items-center gap-1.5 mt-1.5">
+                            <div className="w-16 sm:w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+                              <div
+                                className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 rounded-full"
+                                style={{ width: `${Math.min(user.utilizationRate, 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-black text-emerald-300 font-mono">
+                              {user.utilizationRate}%
+                            </span>
+                          </div>
+
+                          <span className="text-[9px] text-slate-400 mt-0.5">
+                            Aktif: <strong className="text-slate-300">{user.lastActive}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/50 border border-cyan-500/30 text-cyan-300 font-medium backdrop-blur-md">
-                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Multi-Role RBAC Terintegrasi</span>
+
+              {/* Bottom Telemetry Quick Summary */}
+              <div className="mt-3.5 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Akumulasi: <strong className="text-white">1.035+ Sesi Akses</strong> &bull; Rata-rata Utilisasi: <strong className="text-emerald-300">94.1%</strong></span>
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Diperbarui Real-time via Audit Log</span>
+                </div>
               </div>
             </div>
 
-            {/* Visual Hero Showcase Card */}
-            <div className="relative pt-1 group">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-cyan-950/40 border border-white/10 bg-slate-900/60 backdrop-blur-md">
-                <img
-                  src="/simop_hero_banner.jpg"
-                  alt="SIMOP Terpadu Dashboard Showcase"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-auto object-cover max-h-[260px] sm:max-h-[300px] brightness-95 group-hover:scale-[1.01] transition-transform duration-500"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/src/assets/images/simop_hero_banner_1790746658146.jpg';
-                  }}
-                />
-
-                {/* Live telemetry floating badge */}
-                <div className="absolute top-3 right-3 hidden sm:flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-xs text-white shadow-lg">
-                  <Activity className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                  <span className="font-semibold text-[11px]">Real-time Roster Sync</span>
-                </div>
+            {/* Feature Pills */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-950/50 border border-sky-500/30 text-sky-300 font-medium backdrop-blur-md">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />
+                <span>Roster Keseluruhan Petugas</span>
               </div>
-
-              {/* 3 Quick Modules Info Cards */}
-              <div className="grid grid-cols-3 gap-2.5 pt-3">
-                <div className="p-3 rounded-xl bg-slate-900/60 border border-white/10 backdrop-blur-md flex items-center gap-2.5 hover:border-cyan-500/40 transition">
-                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-white truncate">Jadwal Shift</div>
-                    <div className="text-[10px] text-slate-400 truncate">Roster Keseluruhan</div>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-900/60 border border-white/10 backdrop-blur-md flex items-center gap-2.5 hover:border-emerald-500/40 transition">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                    <Layers className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-white truncate">Kategori Senada</div>
-                    <div className="text-[10px] text-slate-400 truncate">Monitoring Piket</div>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-900/60 border border-white/10 backdrop-blur-md flex items-center gap-2.5 hover:border-purple-500/40 transition">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
-                    <GraduationCap className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-white truncate">Uji Pemahaman</div>
-                    <div className="text-[10px] text-slate-400 truncate">PG &amp; Essay Otomatis</div>
-                  </div>
-                </div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/50 border border-emerald-500/30 text-emerald-300 font-medium backdrop-blur-md">
+                <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Referensi Shift Lengkap &amp; Dinamis</span>
+              </div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/50 border border-cyan-500/30 text-cyan-300 font-medium backdrop-blur-md">
+                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Multi-Role RBAC Terverifikasi</span>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Sleek Glassmorphism Login Terminal */}
+          {/* Right Column: Sleek Glassmorphism Login Terminal (Clean, Single Admin, No Demo Shortcuts) */}
           <div className="lg:col-span-5">
-            <div className="w-full bg-slate-900/80 backdrop-blur-2xl p-6 sm:p-8 rounded-3xl shadow-2xl shadow-blue-950/60 border border-white/15 relative">
-              {/* Card Header & Dynamic Tab Switcher */}
+            <div className="w-full bg-slate-900/85 backdrop-blur-2xl p-6 sm:p-8 rounded-3xl shadow-2xl shadow-blue-950/60 border border-white/15 relative">
+              {/* Card Header */}
               <div className="flex items-center justify-between pb-3.5 border-b border-white/10 mb-5">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -282,291 +428,114 @@ export const LoginPage: React.FC = () => {
                     Portal Masuk Petugas
                   </span>
                 </div>
-                <div className="flex bg-slate-950/60 p-1 rounded-xl border border-white/10 text-[11px] font-bold">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('form')}
-                    className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                      activeTab === 'form'
-                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-xs'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Masuk Akun
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('quick')}
-                    className={`px-3 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
-                      activeTab === 'quick'
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Sparkles className="w-3 h-3 text-amber-300" />
-                    <span>Akses Cepat</span>
-                  </button>
+                <div className="px-2.5 py-1 rounded-full bg-slate-950/70 border border-white/10 text-[10px] font-mono text-cyan-300">
+                  SIMOP v2.6
                 </div>
               </div>
 
               {/* Title & Description */}
               <div className="mb-5">
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  {activeTab === 'form' ? 'Autentikasi Akun' : 'Pilih Akun Simulasi / Demo'}
+                  Autentikasi Akun
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
-                  {activeTab === 'form'
-                    ? 'Masukkan NPP (Nomor Pokok Petugas) atau Email kedinasan'
-                    : 'Pilih role akun di bawah untuk langsung masuk dalam 1-klik'}
+                  Masukkan NPP (Nomor Pokok Petugas) atau Email resmi kedinasan beserta kata sandi Anda.
                 </p>
               </div>
 
               {/* Error Toast */}
               {errorMessage && (
-                <div className="mb-4 p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-200 text-xs flex items-start gap-2.5">
+                <div className="mb-4 p-3 rounded-xl bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs flex items-start gap-2.5 shadow-lg">
                   <div className="w-2 h-2 rounded-full bg-rose-400 mt-1 shrink-0 animate-ping" />
                   <span>{errorMessage}</span>
                 </div>
               )}
 
-              {/* TAB 1: Standard Credential Form */}
-              {activeTab === 'form' && (
-                <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-                  <div>
-                    <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                      Email atau NPP
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <UserIcon className="w-4 h-4" />
-                      </div>
-                      <input
-                        type="text"
-                        value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder="Contoh: KOR001, TL001, PET001, atau email"
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950/60 border border-white/10 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition"
-                        disabled={isSubmitting || isLoading}
-                      />
+              {/* Pure Credential Form */}
+              <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                    Email atau NPP
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <UserIcon className="w-4 h-4" />
                     </div>
+                    <input
+                      type="text"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      placeholder="Masukkan NPP atau Email"
+                      autoComplete="username"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-950/70 border border-white/10 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition"
+                      disabled={isSubmitting || isLoading}
+                    />
                   </div>
+                </div>
 
-                  <div>
-                    <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                      Kata Sandi (Password)
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Lock className="w-4 h-4" />
-                      </div>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Masukkan kata sandi akun"
-                        className="w-full pl-10 pr-11 py-2.5 bg-slate-950/60 border border-white/10 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition"
-                        disabled={isSubmitting || isLoading}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                <div>
+                  <label className="block font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                    Kata Sandi (Password)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Lock className="w-4 h-4" />
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-0.5">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="w-4 h-4 text-emerald-500 bg-slate-950/80 border-white/20 rounded focus:ring-emerald-500 cursor-pointer"
-                      />
-                      <span className="font-semibold text-slate-300">Ingat Sesi Saya</span>
-                    </label>
-                    <span className="text-[11px] text-slate-400">
-                      Default: <strong className="text-cyan-300 font-mono">password123</strong>
-                    </span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || isLoading}
-                    className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-cyan-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
-                  >
-                    {isSubmitting || isLoading ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <span>Masuk ke Sistem Terpadu</span>
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </>
-                    )}
-                  </button>
-
-                  {/* Quick autofill helper chips */}
-                  <div className="pt-3 border-t border-white/10">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                      Pintasan Isi Form Cepat:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setFormQuickUser('MASTER001')}
-                        className="px-2 py-1 rounded-lg bg-amber-950/50 border border-amber-500/30 text-amber-300 text-[10px] font-bold hover:bg-amber-900/60 transition cursor-pointer"
-                      >
-                        👑 Super Owner
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFormQuickUser('KOR001')}
-                        className="px-2 py-1 rounded-lg bg-purple-950/50 border border-purple-500/30 text-purple-300 text-[10px] font-bold hover:bg-purple-900/60 transition cursor-pointer"
-                      >
-                        Koordinator
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFormQuickUser('TL001')}
-                        className="px-2 py-1 rounded-lg bg-blue-950/50 border border-blue-500/30 text-blue-300 text-[10px] font-bold hover:bg-blue-900/60 transition cursor-pointer"
-                      >
-                        Team Leader 1
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFormQuickUser('QA001')}
-                        className="px-2 py-1 rounded-lg bg-teal-950/50 border border-teal-500/30 text-teal-300 text-[10px] font-bold hover:bg-teal-900/60 transition cursor-pointer"
-                      >
-                        QA
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFormQuickUser('PET001')}
-                        className="px-2 py-1 rounded-lg bg-emerald-950/50 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold hover:bg-emerald-900/60 transition cursor-pointer"
-                      >
-                        Petugas Tim 1
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              )}
-
-              {/* TAB 2: Instant 1-Click Interactive Login Grid */}
-              {activeTab === 'quick' && (
-                <div className="space-y-2.5">
-                  {/* Master Owner Highlight */}
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLogin('bcmubarok@gmail.com')}
-                    className="w-full text-left p-3 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/70 via-yellow-950/40 to-slate-900/80 hover:border-amber-400 transition-all flex items-center justify-between cursor-pointer group shadow-md"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 text-slate-950 flex items-center justify-center font-black shadow-md">
-                        <Crown className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-black text-amber-200">
-                            B.C. Mubarok
-                          </span>
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-400 text-slate-950 uppercase">
-                            Super Owner
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-amber-300/80 font-mono">
-                          bcmubarok@gmail.com &bull; MASTER001
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-amber-300 px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/30 group-hover:bg-amber-500/30 transition">
-                      Masuk Langsung &rarr;
-                    </span>
-                  </button>
-
-                  {/* Grid of Other Roles */}
-                  <div className="grid grid-cols-2 gap-2 text-left">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Masukkan kata sandi Anda"
+                      autoComplete="current-password"
+                      className="w-full pl-10 pr-11 py-3 bg-slate-950/70 border border-white/10 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition"
+                      disabled={isSubmitting || isLoading}
+                    />
                     <button
                       type="button"
-                      onClick={() => handleQuickLogin('KOR001')}
-                      className="p-2.5 rounded-xl border border-purple-500/30 bg-purple-950/40 hover:bg-purple-900/40 hover:border-purple-400/60 transition flex flex-col cursor-pointer group"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer"
                     >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-[11px] font-extrabold text-purple-300">KOORDINATOR</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300">Admin</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-mono mt-0.5">NPP: KOR001</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin('TL001')}
-                      className="p-2.5 rounded-xl border border-blue-500/30 bg-blue-950/40 hover:bg-blue-900/40 hover:border-blue-400/60 transition flex flex-col cursor-pointer group"
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-[11px] font-extrabold text-blue-300">TEAM LEADER 1</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300">Admin</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-mono mt-0.5">NPP: TL001</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin('TL002')}
-                      className="p-2.5 rounded-xl border border-cyan-500/30 bg-cyan-950/40 hover:bg-cyan-900/40 hover:border-cyan-400/60 transition flex flex-col cursor-pointer group"
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-[11px] font-extrabold text-cyan-300">TEAM LEADER 2</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300">Admin</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-mono mt-0.5">NPP: TL002</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin('QA001')}
-                      className="p-2.5 rounded-xl border border-teal-500/30 bg-teal-950/40 hover:bg-teal-900/40 hover:border-teal-400/60 transition flex flex-col cursor-pointer group"
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-[11px] font-extrabold text-teal-300">QUALITY ASSURANCE</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-teal-500/20 text-teal-300">User</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-mono mt-0.5">NPP: QA001</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin('PET001')}
-                      className="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-900/40 hover:border-emerald-400/60 transition flex flex-col cursor-pointer group"
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-[11px] font-extrabold text-emerald-300">PETUGAS (Tim 1)</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">User</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-mono mt-0.5">NPP: PET001</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin('PET002')}
-                      className="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-900/40 hover:border-emerald-400/60 transition flex flex-col cursor-pointer group"
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-[11px] font-extrabold text-emerald-300">PETUGAS (Tim 2)</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">User</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 font-mono mt-0.5">NPP: PET002</span>
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
-              )}
+
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 text-emerald-500 bg-slate-950/80 border-white/20 rounded focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <span className="font-semibold text-slate-300">Ingat Sesi Saya</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    Akses Aman Terenkripsi
+                  </span>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting || isLoading}
+                  className="w-full mt-3 py-3.5 px-4 bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow-xl shadow-cyan-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
+                >
+                  {isSubmitting || isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span>Masuk ke Sistem Terpadu</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </button>
+              </form>
 
               {/* Bottom Security Assurance inside card */}
-              <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+              <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
                 <div className="flex items-center gap-1.5 text-slate-300">
-                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Akses Terenkripsi &amp; Aman</span>
+                  <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                  <span>Enkripsi Terverifikasi &amp; Akses Berbasis Peran (RBAC)</span>
                 </div>
                 <span className="text-[10px] font-mono text-cyan-400/90">v2.6 Terpadu</span>
               </div>
