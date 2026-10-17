@@ -14,8 +14,6 @@ import {
   Trophy,
   Globe,
   Sparkles,
-  KeyRound,
-  Check,
 } from 'lucide-react';
 import { SimopLogo } from '../ui/SimopLogo';
 
@@ -27,7 +25,6 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [justAutoFilled, setJustAutoFilled] = useState(false);
 
   // Utilization period toggle: 'month' (Bulan Ini) vs 'all' (Semua Waktu)
   const [utilizationPeriod, setUtilizationPeriod] = useState<'month' | 'all'>('month');
@@ -49,14 +46,6 @@ export const LoginPage: React.FC = () => {
   useEffect(() => {
     setTopUsers(storageService.getTopUtilizationUsers());
   }, []);
-
-  const handleQuickFillAdmin = () => {
-    setIdentifier('230297');
-    setPassword('maliksenada2026');
-    setErrorMessage('');
-    setJustAutoFilled(true);
-    setTimeout(() => setJustAutoFilled(false), 2000);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -443,38 +432,13 @@ export const LoginPage: React.FC = () => {
               </form>
             </div>
 
-            {/* Admin Credential Helper Card (Quiet, Symmetrical, Helpful) */}
-            <div className="mt-4 pt-3 border-t border-white/10">
-              <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/10 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
-                    <KeyRound className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>Akun Administrator Utama</span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5 truncate">
-                    NPP: <strong className="text-cyan-300 font-mono">230297</strong> · Sandi: <strong className="text-slate-300 font-mono">maliksenada2026</strong>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleQuickFillAdmin}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition flex items-center gap-1 cursor-pointer ${
-                    justAutoFilled
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600 hover:text-white'
-                  }`}
-                >
-                  {justAutoFilled ? (
-                    <>
-                      <Check className="w-3 h-3" />
-                      <span>Terisi</span>
-                    </>
-                  ) : (
-                    <span>Isi Otomatis</span>
-                  )}
-                </button>
-              </div>
+            {/* Symmetrical Card Footer Notice */}
+            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Portal Kedinasan Terproteksi</span>
+              </span>
+              <span className="text-slate-500 font-mono">SIMOP &amp; Senada</span>
             </div>
           </div>
 
