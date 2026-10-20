@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all unknown paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Health check ping
+    match /_health/{docId} {
+      allow read, write: if true;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // User Accounts Collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if isValidId(userId) &&
+        incoming().id is string &&
+        incoming().npp is string && incoming().npp.size() <= 32 &&
+        incoming().name is string && incoming().name.size() <= 128 &&
+        incoming().role is string && incoming().role.size() <= 32 &&
+        incoming().status in ['Aktif', 'Non-Aktif'];
+      allow delete: if isValidId(userId);
+    }
+
+    // Schedules Collection
+    match /schedules/{scheduleId} {
+      allow read: if true;
+      allow create, update: if isValidId(scheduleId) &&
+        incoming().id is string &&
+        incoming().userId is string &&
+        incoming().date is string &&
+        incoming().shiftCode is string;
+      allow delete: if isValidId(scheduleId);
+    }
+
+    // Approvals Collection
+    match /approvalRequests/{approvalId} {
+      allow read: if true;
+      allow create, update: if isValidId(approvalId) &&
+        incoming().id is string &&
+        incoming().userId is string &&
+        incoming().type in ['Cuti', 'Izin', 'Tukar Jadwal'] &&
+        incoming().status in ['Pending', 'Disetujui', 'Ditolak'];
+      allow delete: if isValidId(approvalId);
+    }
+
+    // Senada Assignments Collection
+    match /senadaAssignments/{assignmentId} {
+      allow read: if true;
+      allow create, update: if isValidId(assignmentId) &&
+        incoming().id is string &&
+        incoming().userId is string &&
+        incoming().category in ['PM', 'IP', 'IM'];
+      allow delete: if isValidId(assignmentId);
+    }
+
+    // Audit Logs Collection (Append-only for security)
+    match /auditLogs/{logId} {
+      allow read: if true;
+      allow create: if isValidId(logId) &&
+        incoming().id is string &&
+        incoming().action is string &&
+        incoming().module is string;
+      // Prohibit tampering with audit history
+      allow update, delete: if false;
+    }
+
+    // Real-time Cloud Sync Store (Cross-Device, Cross-IP, Cross-Browser Synchronizer)
+    match /systemSync/{key} {
+      allow read: if true;
+      allow create, update: if isValidId(key) &&
+        incoming().key is string &&
+        incoming().payload is string &&
+        incoming().updatedAt is string;
+      allow delete: if isValidId(key);
+    }
+  }
+}

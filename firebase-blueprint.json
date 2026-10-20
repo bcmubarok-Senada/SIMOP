@@ -1,0 +1,143 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Petugas, TL, QA, Koordinator, dan Master Administrator",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "npp": { "type": "string", "maxLength": 32 },
+        "name": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 128 },
+        "passwordHash": { "type": "string", "maxLength": 256 },
+        "salt": { "type": "string", "maxLength": 128 },
+        "jabatan": { "type": "string", "maxLength": 128 },
+        "teamId": { "type": "string", "maxLength": 64 },
+        "role": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "enum": ["Aktif", "Non-Aktif"] },
+        "avatarUrl": { "type": "string", "maxLength": 1000000 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "npp", "name", "role", "status"]
+    },
+    "Schedule": {
+      "title": "Schedule",
+      "description": "Entri jadwal shift dinas harian petugas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 32 },
+        "shiftCode": { "type": "string", "maxLength": 32 },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string" },
+        "teamId": { "type": "string", "maxLength": 64 },
+        "role": { "type": "string", "maxLength": 32 }
+      },
+      "required": ["id", "userId", "date", "shiftCode"]
+    },
+    "ApprovalRequest": {
+      "title": "ApprovalRequest",
+      "description": "Permohonan cuti, izin, dan tukar shift dinas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 128 },
+        "userNpp": { "type": "string", "maxLength": 32 },
+        "teamId": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "enum": ["Cuti", "Izin", "Tukar Jadwal"] },
+        "date": { "type": "string", "maxLength": 32 },
+        "currentShift": { "type": "string", "maxLength": 32 },
+        "targetShift": { "type": "string", "maxLength": 32 },
+        "targetUserId": { "type": "string", "maxLength": 128 },
+        "targetUserName": { "type": "string", "maxLength": 128 },
+        "reason": { "type": "string", "maxLength": 1024 },
+        "status": { "type": "string", "enum": ["Pending", "Disetujui", "Ditolak"] },
+        "approvedBy": { "type": "string", "maxLength": 128 },
+        "approvedByName": { "type": "string", "maxLength": 128 },
+        "approvedAt": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 1024 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "type", "date", "status"]
+    },
+    "SenadaAssignment": {
+      "title": "SenadaAssignment",
+      "description": "Penugasan Kategori Senada (PM, IP, IM)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 128 },
+        "userNpp": { "type": "string", "maxLength": 32 },
+        "teamId": { "type": "string", "maxLength": 64 },
+        "date": { "type": "string", "maxLength": 32 },
+        "category": { "type": "string", "enum": ["PM", "IP", "IM"] },
+        "shiftCode": { "type": "string", "maxLength": 32 },
+        "notes": { "type": "string", "maxLength": 1024 },
+        "assignedBy": { "type": "string", "maxLength": 128 },
+        "assignedAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["Aktif", "Selesai"] }
+      },
+      "required": ["id", "userId", "date", "category"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Jejak audit aktivitas dan integritas sistem",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 128 },
+        "userRole": { "type": "string", "maxLength": 32 },
+        "action": { "type": "string", "maxLength": 128 },
+        "module": { "type": "string", "maxLength": 128 },
+        "notes": { "type": "string", "maxLength": 2048 },
+        "timestamp": { "type": "string" },
+        "ipAddress": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "action", "module", "timestamp"]
+    },
+    "SystemSync": {
+      "title": "SystemSync",
+      "description": "Payload sinkronisasi data cloud real-time antar perangkat dan IP",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string", "maxLength": 128 },
+        "payload": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["key", "payload", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Koleksi data akun pengguna"
+    },
+    "/schedules/{scheduleId}": {
+      "schema": "Schedule",
+      "description": "Koleksi jadwal dinas shift petugas"
+    },
+    "/approvalRequests/{approvalId}": {
+      "schema": "ApprovalRequest",
+      "description": "Koleksi permohonan persetujuan dinas"
+    },
+    "/senadaAssignments/{assignmentId}": {
+      "schema": "SenadaAssignment",
+      "description": "Koleksi penugasan Senada"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Koleksi riwayat log audit sistem"
+    },
+    "/systemSync/{key}": {
+      "schema": "SystemSync",
+      "description": "Koleksi sinkronisasi state data operasional real-time"
+    }
+  }
+}

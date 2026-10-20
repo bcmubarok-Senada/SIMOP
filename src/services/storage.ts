@@ -7,6 +7,8 @@ import {
 } from '../types';
 import { DEFAULT_TEAMS, DEFAULT_SHIFT_DEFINITIONS } from '../utils/constants';
 import { hashPassword } from '../utils/crypto';
+import { cloudSync } from './cloudSync';
+import { securityService } from './security';
 
 const STORAGE_KEYS = {
   USERS: 'simop_users_v1',
@@ -44,16 +46,18 @@ function getStorage<T>(key: string, fallback: T): T {
 
 function setStorage<T>(key: string, value: T): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    const sanitized = securityService.sanitizeObject(value);
+    localStorage.setItem(key, JSON.stringify(sanitized));
+    // Real-time synchronization across devices, servers, and IPs
+    cloudSync.pushToCloud(key, sanitized);
   } catch (err) {
     console.error(`Error writing ${key} to storage:`, err);
   }
 }
 
 export async function initializeDatabase(): Promise<void> {
-  if (localStorage.getItem(STORAGE_KEYS.INITIALIZED)) {
-    return;
-  }
+  const isInitialized = !!localStorage.getItem(STORAGE_KEYS.INITIALIZED);
+  if (!isInitialized) {
 
   // Default Admin User configuration (NPP: 230297, Password: maliksenada2026)
   const defaultSalt = 'a1b2c3d4e5f67890';
@@ -400,7 +404,22 @@ export async function initializeDatabase(): Promise<void> {
   // Initial Shift References
   setStorage(STORAGE_KEYS.SHIFTS, DEFAULT_SHIFT_DEFINITIONS);
 
-  localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+    localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+  }
+
+  // Initialize and synchronize with Google Cloud Firestore across devices & tabs
+  try {
+    const currentMap: Record<string, any> = {};
+    for (const [_, key] of Object.entries(STORAGE_KEYS)) {
+      if (key !== STORAGE_KEYS.INITIALIZED) {
+        const val = getStorage<any>(key, null);
+        if (val !== null) currentMap[key] = val;
+      }
+    }
+    await cloudSync.initCloudSync(currentMap);
+  } catch (err) {
+    console.warn('[CloudSync] Handshake error:', err);
+  }
 }
 
 export const ADMIN_USER_CONFIG: User = {

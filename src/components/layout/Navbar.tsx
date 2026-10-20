@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getRoleBadgeClass, isAdminRole } from '../../utils/constants';
 import {
   Bell, LogOut, User as UserIcon, CheckCheck,
-  Menu, Camera, Trash2, Upload
+  Menu, Camera, Trash2, Upload, Cloud
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { SimopLogo } from '../ui/SimopLogo';
@@ -96,6 +96,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
 
         {/* Right: Notifications, User Profile & Logout */}
         <div className="flex items-center gap-2 md:gap-3">
+          {/* Real-time Cloud Sync Badge (Cross-Device & Cross-IP) */}
+          <div
+            title="Tersambung ke Google Cloud Firestore. Sinkronisasi real-time aktif lintas laptop, PC, browser, dan tab."
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200/80 text-[11px] font-semibold text-emerald-700 shadow-2xs select-none"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden lg:inline">Sinkron Cloud Realtime</span>
+          </div>
 
           {/* Notification Bell Dropdown */}
           <div className="relative">

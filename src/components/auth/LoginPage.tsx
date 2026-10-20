@@ -176,9 +176,9 @@ export const LoginPage: React.FC = () => {
 
         {/* Real-time Status & Clock */}
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-semibold backdrop-blur-md">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-semibold backdrop-blur-md shadow-xs">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Sistem Operasional Aktif</span>
+            <span>Sinkron Cloud Realtime Aktif</span>
           </div>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/60 border border-white/10 text-xs font-mono text-cyan-200 backdrop-blur-md">
@@ -337,8 +337,9 @@ export const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="px-2.5 py-1 rounded-xl bg-slate-950/80 border border-white/10 text-[10px] font-mono text-cyan-300">
-                  Aman (SSL/TLS)
+                <div className="px-2.5 py-1 rounded-xl bg-slate-950/80 border border-emerald-500/30 text-[10px] font-mono text-emerald-300 flex items-center gap-1.5 shadow-2xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Proteksi Brute-Force &amp; XSS</span>
                 </div>
               </div>
 

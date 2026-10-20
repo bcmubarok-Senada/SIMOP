@@ -3,6 +3,7 @@ import { User, RoleType, NotificationItem } from '../types';
 import { storageService, initializeDatabase } from '../services/storage';
 import { verifyPassword } from '../utils/crypto';
 import { isAdminRole } from '../utils/constants';
+import { securityService } from '../services/security';
 
 interface Toast {
   id: string;
@@ -103,12 +104,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setNotifications(filtered);
   }, [currentUser, refreshTrigger]);
 
+  // Real-time synchronization listener (lintas laptop, PC, browser, dan tab)
+  useEffect(() => {
+    const handleCloudSync = () => {
+      setRefreshTrigger(prev => prev + 1);
+      if (currentUser) {
+        const fresh = storageService.getUserById(currentUser.id);
+        if (fresh && fresh.status === 'Nonaktif') {
+          logout();
+          addToast('Sesi berakhir: Akun dinonaktifkan oleh Administrator.', 'warning');
+        } else if (fresh) {
+          setCurrentUser(fresh);
+        }
+      }
+    };
+
+    window.addEventListener('simop_cloud_sync', handleCloudSync);
+    return () => window.removeEventListener('simop_cloud_sync', handleCloudSync);
+  }, [currentUser]);
+
   const login = async (identifier: string, pass: string, rememberMe: boolean): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
-      const user = storageService.getUserByNppOrEmail(identifier);
+      // 1. Cek proteksi brute-force / rate limit
+      const rateCheck = securityService.checkLoginRateLimit(identifier);
+      if (!rateCheck.allowed) {
+        return {
+          success: false,
+          error: `Terlalu banyak percobaan gagal. Akun dikunci sementara demi keamanan selama ${rateCheck.remainingLockoutSeconds} detik.`,
+        };
+      }
+
+      // 2. Sanitasi input kredensial (anti-injection & anti-XSS)
+      const cleanIdentifier = securityService.sanitizeInput(identifier);
+      const user = storageService.getUserByNppOrEmail(cleanIdentifier);
       if (!user) {
-        return { success: false, error: 'Email atau NPP tidak ditemukan.' };
+        const attempt = securityService.recordFailedLogin(identifier);
+        if (attempt.locked) {
+          return {
+            success: false,
+            error: 'Terlalu banyak percobaan gagal. Akses diblokir sementara demi keamanan sistem (15 menit).',
+          };
+        }
+        return {
+          success: false,
+          error: `Email atau NPP tidak ditemukan. Sisa percobaan: ${attempt.remainingAttempts}x.`,
+        };
       }
 
       if (user.status === 'Nonaktif') {
@@ -117,8 +158,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const isValid = await verifyPassword(pass.trim(), user.salt, user.passwordHash);
       if (!isValid) {
-        return { success: false, error: 'Password yang Anda masukkan salah.' };
+        const attempt = securityService.recordFailedLogin(identifier);
+        storageService.addAuditLog({
+          userId: user.id,
+          userName: user.name,
+          userRole: user.role,
+          action: 'Percobaan Login Gagal (Password Salah)',
+          module: 'Autentikasi',
+          notes: `Gagal login. Sisa percobaan aman: ${attempt.remainingAttempts}x`,
+        });
+
+        if (attempt.locked) {
+          return {
+            success: false,
+            error: 'Terlalu banyak percobaan gagal. Akses diblokir sementara demi keamanan sistem (15 menit).',
+          };
+        }
+        return {
+          success: false,
+          error: `Password yang Anda masukkan salah. Sisa percobaan: ${attempt.remainingAttempts}x.`,
+        };
       }
+
+      // Login berhasil: reset rate limiter
+      securityService.resetLoginRateLimit(identifier);
 
       setCurrentUser(user);
       if (rememberMe) {
@@ -137,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userRole: user.role,
         action: 'Login Berhasil',
         module: 'Autentikasi',
-        notes: `Login melalui NPP/Email: ${identifier}`,
+        notes: `Login sukses via NPP/Email: ${cleanIdentifier}`,
       });
 
       addToast(`Selamat datang kembali, ${user.name}!`, 'success');
