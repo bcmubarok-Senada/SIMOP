@@ -407,7 +407,7 @@ export async function initializeDatabase(): Promise<void> {
     localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
   }
 
-  // Initialize and synchronize with Google Cloud Firestore across devices & tabs
+  // Initialize and synchronize with Google Cloud Firestore in the background (non-blocking)
   try {
     const currentMap: Record<string, any> = {};
     for (const [_, key] of Object.entries(STORAGE_KEYS)) {
@@ -416,7 +416,10 @@ export async function initializeDatabase(): Promise<void> {
         if (val !== null) currentMap[key] = val;
       }
     }
-    await cloudSync.initCloudSync(currentMap);
+    // Launch background cloud sync without blocking UI rendering
+    cloudSync.initCloudSync(currentMap).catch((err) => {
+      console.warn('[CloudSync] Background sync error:', err);
+    });
   } catch (err) {
     console.warn('[CloudSync] Handshake error:', err);
   }
