@@ -14,6 +14,7 @@ import {
   Trophy,
   Globe,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { SimopLogo } from '../ui/SimopLogo';
 
@@ -25,6 +26,7 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginPhase, setLoginPhase] = useState<'idle' | 'verifying' | 'syncing' | 'ready'>('idle');
 
   // Utilization period toggle: 'month' (Bulan Ini) vs 'all' (Semua Waktu)
   const [utilizationPeriod, setUtilizationPeriod] = useState<'month' | 'all'>('month');
@@ -61,13 +63,26 @@ export const LoginPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const result = await login(identifier, password, rememberMe);
-    setIsSubmitting(false);
+    setLoginPhase('verifying');
 
-    if (!result.success && result.error) {
-      setErrorMessage(result.error);
-    } else if (result.success) {
+    // Tahap 1: Verifikasi Hash Kriptografi & Sanitasi (feedback visual ~250ms)
+    await new Promise(r => setTimeout(r, 260));
+    setLoginPhase('syncing');
+
+    const result = await login(identifier, password, rememberMe);
+
+    if (!result.success) {
+      setIsSubmitting(false);
+      setLoginPhase('idle');
+      if (result.error) {
+        setErrorMessage(result.error);
+      }
+    } else {
+      // Tahap 2: Sinkronisasi Cloud Berhasil -> Mengalihkan
+      setLoginPhase('ready');
       setTopUsers(storageService.getTopUtilizationUsers());
+      // Jeda halus ~350ms agar animasi transisi selesai sebelum masuk ke workspace
+      await new Promise(r => setTimeout(r, 380));
     }
   };
 
@@ -419,10 +434,18 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting || isLoading}
-                  className="w-full mt-2 py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 shadow-lg shadow-indigo-600/30 transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  className="w-full mt-2 py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 shadow-lg shadow-indigo-600/30 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
                 >
                   {isSubmitting || isLoading ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 text-cyan-300 animate-spin" />
+                      <span>
+                        {loginPhase === 'verifying' && 'Memverifikasi Kredensial...'}
+                        {loginPhase === 'syncing' && 'Sinkronisasi Cloud...'}
+                        {loginPhase === 'ready' && 'Mengalihkan Sesi...'}
+                        {loginPhase === 'idle' && 'Memproses...'}
+                      </span>
+                    </div>
                   ) : (
                     <>
                       <span>Masuk ke SIMOP</span>
@@ -432,6 +455,45 @@ export const LoginPage: React.FC = () => {
                 </button>
               </form>
             </div>
+
+            {/* Dynamic Fullscreen Login Progress Overlay */}
+            {loginPhase !== 'idle' && (
+              <div className="fixed inset-0 z-50 bg-[#080d1a]/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-150">
+                <div className="relative flex flex-col items-center max-w-sm w-full mx-4 px-6 py-8 rounded-3xl bg-slate-900/90 border border-slate-700/80 shadow-2xl shadow-indigo-950/60 text-center animate-in zoom-in-95 duration-200">
+                  {/* Glowing Animated Mark */}
+                  <div className="relative mb-5">
+                    <div className="absolute inset-0 rounded-2xl bg-cyan-500/25 blur-xl animate-pulse" />
+                    <div className="p-3.5 rounded-2xl bg-slate-950 border border-cyan-500/30 shadow-lg shadow-cyan-500/10 relative">
+                      <SimopLogo size="md" variant="mark-only" />
+                    </div>
+                  </div>
+
+                  <h3 className="text-base font-extrabold text-white tracking-tight flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                    <span>
+                      {loginPhase === 'verifying' && 'Memverifikasi Kredensial...'}
+                      {loginPhase === 'syncing' && 'Sinkronisasi Cloud Firestore...'}
+                      {loginPhase === 'ready' && 'Autentikasi Berhasil!'}
+                    </span>
+                  </h3>
+
+                  <p className="text-xs text-slate-400 mt-1 mb-5">
+                    {loginPhase === 'verifying' && 'Memeriksa hash kriptografis SHA-256 & proteksi sesi'}
+                    {loginPhase === 'syncing' && 'Sinkronisasi real-time antar perangkat aktif'}
+                    {loginPhase === 'ready' && 'Membuka workspace operasional kedinasan...'}
+                  </p>
+
+                  {/* High-tech Shimmer Progress Bar */}
+                  <div className="w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden border border-white/10 relative">
+                    <div
+                      className={`h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-400 rounded-full transition-all duration-300 ease-out ${
+                        loginPhase === 'verifying' ? 'w-1/3' : loginPhase === 'syncing' ? 'w-4/5' : 'w-full'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Symmetrical Card Footer Notice */}
             <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">

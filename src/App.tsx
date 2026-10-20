@@ -17,6 +17,7 @@ import { ReportsPage } from './components/reports/ReportsPage';
 import { AuditLogPage } from './components/audit/AuditLogPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { ToastContainer } from './components/ui/ToastContainer';
+import { RouteTransition } from './components/layout/RouteTransition';
 import { isAdminRole } from './utils/constants';
 
 const MainLayout: React.FC = () => {
@@ -102,7 +103,9 @@ const MainLayout: React.FC = () => {
         <Navbar onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} />
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          {renderContent()}
+          <RouteTransition currentRoute={currentRoute}>
+            {renderContent()}
+          </RouteTransition>
         </main>
       </div>
 

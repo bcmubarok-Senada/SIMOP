@@ -47,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   const navItemClass = (route: string) => {
     const isActive = currentRoute === route;
-    return `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
+    return `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.98] group ${
       isActive
         ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
