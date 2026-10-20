@@ -56,6 +56,15 @@ function setStorage<T>(key: string, value: T): void {
 }
 
 export async function initializeDatabase(): Promise<void> {
+  // 1. Cloud-First Hydration: Cek dan unduh seluruh data dari Cloud Firestore jika ada
+  const hasCloudData = await cloudSync.fetchAndHydrateFromCloud();
+  if (hasCloudData) {
+    localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+    console.log('[SIMOP Database] Berhasil sinkronisasi langsung dari Cloud Firestore.');
+    return;
+  }
+
+  // 2. Hanya jika Cloud Firestore benar-benar kosong (pertama kali inisialisasi)
   const isInitialized = !!localStorage.getItem(STORAGE_KEYS.INITIALIZED);
   if (!isInitialized) {
 
@@ -405,24 +414,26 @@ export async function initializeDatabase(): Promise<void> {
   setStorage(STORAGE_KEYS.SHIFTS, DEFAULT_SHIFT_DEFINITIONS);
 
     localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+
+    // Unggah data awal ke cloud agar semua laptop dan pengguna lain dapat mengakses
+    try {
+      const currentMap: Record<string, any> = {};
+      for (const [_, key] of Object.entries(STORAGE_KEYS)) {
+        if (key !== STORAGE_KEYS.INITIALIZED) {
+          const val = getStorage<any>(key, null);
+          if (val !== null) currentMap[key] = val;
+        }
+      }
+      for (const [key, val] of Object.entries(currentMap)) {
+        await cloudSync.pushToCloud(key, val);
+      }
+    } catch (err) {
+      console.warn('[CloudSync] Gagal upload seed awal:', err);
+    }
   }
 
-  // Initialize and synchronize with Google Cloud Firestore in the background (non-blocking)
-  try {
-    const currentMap: Record<string, any> = {};
-    for (const [_, key] of Object.entries(STORAGE_KEYS)) {
-      if (key !== STORAGE_KEYS.INITIALIZED) {
-        const val = getStorage<any>(key, null);
-        if (val !== null) currentMap[key] = val;
-      }
-    }
-    // Launch background cloud sync without blocking UI rendering
-    cloudSync.initCloudSync(currentMap).catch((err) => {
-      console.warn('[CloudSync] Background sync error:', err);
-    });
-  } catch (err) {
-    console.warn('[CloudSync] Handshake error:', err);
-  }
+  // Pasang listener real-time untuk sinkronisasi dinamis
+  cloudSync.attachRealtimeListener();
 }
 
 export const ADMIN_USER_CONFIG: User = {
