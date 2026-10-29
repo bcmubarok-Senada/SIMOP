@@ -96,6 +96,21 @@ export interface BaselineScheduleEntry {
   createdAt: string;
 }
 
+export interface ScheduleChangeRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  userNpp: string;
+  date: string; // YYYY-MM-DD
+  oldShift: string;
+  newShift: string;
+  type: 'EDIT_ADMIN' | 'APPROVAL_SWAP' | 'BULK_ADMIN';
+  changedBy: string;
+  changedByName: string;
+  notes?: string;
+  timestamp: string;
+}
+
 export interface ShiftRequirement {
   shiftCode: string;
   requiredCount: number;

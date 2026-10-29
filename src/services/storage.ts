@@ -3,7 +3,7 @@ import {
   ApprovalRequest, SenadaAssignment, SenadaHistory, Question, Exam,
   ExamSubmission, NotificationItem, AuditLog, SystemSettings, RoleType,
   ClassroomMaterial, ClassroomDiscussion, ClassroomDiscussionReply, ShiftMeta,
-  UserUtilization
+  UserUtilization, ScheduleChangeRecord
 } from '../types';
 import { DEFAULT_TEAMS, DEFAULT_SHIFT_DEFINITIONS } from '../utils/constants';
 import { hashPassword } from '../utils/crypto';
@@ -14,6 +14,7 @@ const STORAGE_KEYS = {
   USERS: 'simop_users_v1',
   TEAMS: 'simop_teams_v1',
   SCHEDULES: 'simop_schedules_v1',
+  SCHEDULE_HISTORY: 'simop_schedule_history_v1',
   BASELINE_SCHEDULES: 'simop_baseline_schedules_v1',
   SHIFT_REQUIREMENTS: 'simop_shift_reqs_v1',
   SHIFTS: 'simop_shifts_v2',
@@ -654,10 +655,33 @@ export const storageService = {
   // Schedules (Aktif)
   getSchedules: (): ScheduleEntry[] => getStorage(STORAGE_KEYS.SCHEDULES, []),
   saveSchedules: (schedules: ScheduleEntry[]): void => setStorage(STORAGE_KEYS.SCHEDULES, schedules),
-  updateScheduleCell: (userId: string, date: string, shiftCode: string, scheduleType: 'PETUGAS' | 'TL' | 'QA', updaterId: string): void => {
+  
+  // Riwayat Perubahan Jadwal Dinas
+  getScheduleHistory: (): ScheduleChangeRecord[] => getStorage(STORAGE_KEYS.SCHEDULE_HISTORY, []),
+  addScheduleHistory: (record: Omit<ScheduleChangeRecord, 'id' | 'timestamp'>): void => {
+    const list = storageService.getScheduleHistory();
+    const newRecord: ScheduleChangeRecord = {
+      ...record,
+      id: `sch-hist-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: new Date().toISOString(),
+    };
+    list.unshift(newRecord);
+    setStorage(STORAGE_KEYS.SCHEDULE_HISTORY, list.slice(0, 300));
+  },
+
+  updateScheduleCell: (
+    userId: string,
+    date: string,
+    shiftCode: string,
+    scheduleType: 'PETUGAS' | 'TL' | 'QA',
+    updaterId: string,
+    notes?: string,
+    oldShiftCode?: string
+  ): void => {
     const schedules = storageService.getSchedules();
     const user = storageService.getUserById(userId);
     const existingIndex = schedules.findIndex(s => s.userId === userId && s.date === date);
+    const prevShift = oldShiftCode || (existingIndex >= 0 ? schedules[existingIndex].shiftCode : '-');
     
     if (existingIndex >= 0) {
       schedules[existingIndex] = {
@@ -681,6 +705,30 @@ export const storageService = {
       });
     }
     setStorage(STORAGE_KEYS.SCHEDULES, schedules);
+
+    // Catat ke Riwayat Perubahan Jadwal
+    const updaterUser = storageService.getUserById(updaterId);
+    storageService.addScheduleHistory({
+      userId,
+      userName: user?.name || 'Petugas',
+      userNpp: user?.npp || '-',
+      date,
+      oldShift: prevShift,
+      newShift: shiftCode,
+      type: 'EDIT_ADMIN',
+      changedBy: updaterId,
+      changedByName: updaterUser?.name || 'Administrator',
+      notes: notes || `Perubahan jadwal dinas tanggal ${date}`,
+    });
+
+    // Munculkan notifikasi sistem
+    storageService.addNotification({
+      targetRole: 'ALL',
+      title: 'Perubahan Jadwal Dinas',
+      message: `Jadwal ${user?.name || 'Petugas'} pada tanggal ${date} diperbarui dari [${prevShift}] menjadi [${shiftCode}].`,
+      type: 'SCHEDULE',
+      read: false,
+    });
   },
 
   // Baseline Schedules (JADWAL AWAL)

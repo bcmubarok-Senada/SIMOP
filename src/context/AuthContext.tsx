@@ -255,28 +255,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addToast('Semua notifikasi telah ditandai dibaca.', 'info');
   };
 
-  // Safe navigation with permission checks
+  // Navigation handler supporting both public and authenticated users
   const setCurrentRoute = (route: string) => {
-    if (!currentUser) {
-      setCurrentRouteState('login');
-      return;
-    }
-    const isAdmin = isAdminRole(currentUser.role);
-    
-    // Strict Route Guarding: QA & Petugas cannot open User Management, Audit Log, Bank Soal/Buat Ujian
-    if (!isAdmin) {
-      const adminOnlyRoutes = ['users', 'audit', 'settings', 'exam-create', 'bank-soal'];
-      if (adminOnlyRoutes.includes(route)) {
-        addToast('Akses ditolak: Anda tidak memiliki wewenang untuk halaman ini.', 'error');
-        return;
-      }
-      // Khusus Petugas can see Senada, QA cannot see Senada (per spec: "Modul ini KHUSUS PETUGAS")
-      if (route === 'senada' && currentUser.role !== 'PETUGAS') {
-        addToast('Akses ditolak: Modul Kategori Senada khusus untuk Petugas.', 'warning');
-        return;
-      }
-    }
-
     setCurrentRouteState(route);
   };
 

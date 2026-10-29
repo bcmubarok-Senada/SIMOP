@@ -8,8 +8,16 @@ import {
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
+export interface ExamParticipantInfo {
+  name: string;
+  npp: string;
+  teamId?: string;
+  userId?: string;
+}
+
 interface ExamRunnerProps {
   exam: Exam;
+  participant?: ExamParticipantInfo;
   onFinish: () => void;
 }
 
@@ -23,7 +31,7 @@ const getQuestionOptions = (q: Question) => {
   ];
 };
 
-export const ExamRunner: React.FC<ExamRunnerProps> = ({ exam, onFinish }) => {
+export const ExamRunner: React.FC<ExamRunnerProps> = ({ exam, participant, onFinish }) => {
   const { currentUser, addToast } = useAuth();
 
   // Load questions for this exam
@@ -107,7 +115,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ exam, onFinish }) => {
 
   // Final calculate & save submission
   const handleFinalSubmit = () => {
-    if (!currentUser || submissionResult) return;
+    if (submissionResult) return;
 
     let correctCount = 0;
     const answerRecords = examQuestions.map(q => {
@@ -131,14 +139,19 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ exam, onFinish }) => {
     const isPassed = score >= exam.passingGrade;
     const durationTakenSeconds = exam.durationMinutes * 60 - timeLeft;
 
+    const pName = participant?.name || currentUser?.name || 'Peserta';
+    const pNpp = participant?.npp || currentUser?.npp || '-';
+    const pTeam = participant?.teamId || currentUser?.teamId || 'team-1';
+    const pUserId = participant?.userId || currentUser?.id || `usr-${pNpp.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+
     const submission: ExamSubmission = {
       id: `sub-${Date.now()}`,
       examId: exam.id,
       examTitle: exam.title,
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userNpp: currentUser.npp,
-      userTeamId: currentUser.teamId,
+      userId: pUserId,
+      userName: pName,
+      userNpp: pNpp,
+      userTeamId: pTeam,
       score,
       totalQuestions,
       correctCount,
@@ -152,19 +165,19 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ exam, onFinish }) => {
 
     // Audit Log
     storageService.addAuditLog({
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userRole: currentUser.role,
+      userId: pUserId,
+      userName: pName,
+      userRole: currentUser?.role || 'PETUGAS',
       action: 'Menyelesaikan Uji Pemahaman',
       module: 'Uji Pemahaman',
-      notes: `${currentUser.name} menyelesaikan ${exam.title} dengan nilai ${score} (${isPassed ? 'LULUS' : 'TIDAK LULUS'})`,
+      notes: `${pName} (${pNpp}) menyelesaikan ${exam.title} dengan nilai ${score} (${isPassed ? 'LULUS' : 'TIDAK LULUS'})`,
     });
 
     // Notification
     storageService.addNotification({
-      recipientUserId: currentUser.id,
+      recipientUserId: pUserId,
       title: `Hasil Ujian: ${exam.title}`,
-      message: `Nilai Anda: ${score} (${isPassed ? 'LULUS' : 'TIDAK LULUS'}). Passing Grade: ${exam.passingGrade}`,
+      message: `${pName} (${pNpp}) - Nilai Anda: ${score} (${isPassed ? 'LULUS' : 'TIDAK LULUS'}). Passing Grade: ${exam.passingGrade}`,
       type: 'EXAM',
       linkRoute: 'exams',
     });
@@ -220,7 +233,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ exam, onFinish }) => {
             </span>
             <h2 className="text-2xl font-bold text-slate-800">{exam.title}</h2>
             <p className="text-xs text-slate-500 mt-1">
-              Peserta: {currentUser?.name} ({currentUser?.npp}) &bull; Waktu:{' '}
+              Peserta: <strong>{submissionResult.userName}</strong> (NPP: {submissionResult.userNpp}) &bull; Waktu:{' '}
               {Math.floor(submissionResult.durationSeconds / 60)} menit{' '}
               {submissionResult.durationSeconds % 60} detik
             </p>
@@ -365,9 +378,14 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({ exam, onFinish }) => {
       {/* Top Floating Bar: Timer & Progress */}
       <div className="sticky top-20 z-30 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200/80 shadow-md flex items-center justify-between gap-4">
         <div>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            Sedang Dikerjakan
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              Sedang Dikerjakan
+            </span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+              Peserta: {participant?.name || currentUser?.name || 'Peserta'} (NPP: {participant?.npp || currentUser?.npp || '-'})
+            </span>
+          </div>
           <h3 className="text-sm font-bold text-slate-800 truncate max-w-xs sm:max-w-md">
             {exam.title}
           </h3>

@@ -65,7 +65,8 @@ export const ApprovalManagement: React.FC = () => {
     }
   }, [isCreateModalOpen, defaultTargetTl]);
 
-  // Fields for Tukar Shift
+  // Fields for Tukar Shift & General Applicant
+  const [reqApplicantUserId, setReqApplicantUserId] = useState(() => currentUser?.id || '');
   const [reqSwapUserId, setReqSwapUserId] = useState('');
   const [reqSwapDate, setReqSwapDate] = useState(() => {
     const d = new Date();
@@ -83,18 +84,19 @@ export const ApprovalManagement: React.FC = () => {
 
   // Auto-detect shifts and categories on date/user change
   useEffect(() => {
-    if (currentUser) {
-      const userSched = schedules.find(s => s.userId === currentUser.id && s.date === reqStartDate);
+    const activeAppId = reqApplicantUserId || currentUser?.id;
+    if (activeAppId) {
+      const userSched = schedules.find(s => s.userId === activeAppId && s.date === reqStartDate);
       if (userSched) {
         setReqOriginalShiftA(userSched.shiftCode);
       }
       const senadaList = storageService.getSenadaAssignments();
-      const userSenada = senadaList.find(s => s.userId === currentUser.id && s.date === reqStartDate);
+      const userSenada = senadaList.find(s => s.userId === activeAppId && s.date === reqStartDate);
       if (userSenada) {
         setReqOriginalCategory(userSenada.category);
       }
     }
-  }, [reqStartDate, currentUser?.id, isCreateModalOpen]);
+  }, [reqStartDate, reqApplicantUserId, currentUser?.id, isCreateModalOpen]);
 
   useEffect(() => {
     if (reqSwapUserId) {
@@ -120,8 +122,8 @@ export const ApprovalManagement: React.FC = () => {
   const filteredApprovals = useMemo(() => {
     return approvals.filter(item => {
       // Permission checks
-      if (isKoordinator) {
-        // Koordinator can view all approvals
+      if (!currentUser || isAdmin || isKoordinator) {
+        // Public mode, Master Admin, or Koordinator can view all approvals
       } else if (isTL) {
         // TL can see approvals targeted to their specific TL role or user ID,
         // or approvals created by them, or swap requests involving them
@@ -161,7 +163,13 @@ export const ApprovalManagement: React.FC = () => {
   // Handle submit new request
   const handleCreateRequest = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) return;
+
+    // Applicant user resolution
+    const applicantUser = allUsers.find(u => u.id === reqApplicantUserId) || currentUser;
+    if (!applicantUser) {
+      addToast('Silakan pilih nama Anda / petugas pemohon.', 'error');
+      return;
+    }
 
     if (!reqReason.trim()) {
       addToast('Alasan permohonan wajib diisi.', 'error');
@@ -173,7 +181,7 @@ export const ApprovalManagement: React.FC = () => {
         addToast('Silakan pilih rekan petugas untuk tukar jadwal.', 'error');
         return;
       }
-      if (reqSwapUserId === currentUser.id) {
+      if (reqSwapUserId === applicantUser.id) {
         addToast('Tidak dapat menukar jadwal dengan diri sendiri.', 'error');
         return;
       }
@@ -189,11 +197,11 @@ export const ApprovalManagement: React.FC = () => {
     const newApproval: ApprovalRequest = {
       id: `appr-${Date.now()}`,
       ticketNumber: ticketNo,
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userRole: currentUser.role,
-      teamId: currentUser.teamId,
-      userTeamId: currentUser.teamId,
+      userId: applicantUser.id,
+      userName: applicantUser.name,
+      userRole: applicantUser.role,
+      teamId: applicantUser.teamId,
+      userTeamId: applicantUser.teamId,
       type: reqType,
       targetTlRole: reqTargetTlRole,
       targetTlUserId: targetTlUser?.id,
@@ -222,12 +230,12 @@ export const ApprovalManagement: React.FC = () => {
 
     // Add Audit Log
     storageService.addAuditLog({
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userRole: currentUser.role,
+      userId: applicantUser.id,
+      userName: applicantUser.name,
+      userRole: applicantUser.role,
       action: `Pengajuan ${reqType}`,
       module: 'Sistem Approval',
-      notes: `Tiket #${ticketNo} diajukan oleh ${currentUser.name} dengan tujuan ${reqTargetTlRole}`,
+      notes: `Tiket #${ticketNo} diajukan oleh ${applicantUser.name} dengan tujuan ${reqTargetTlRole}`,
     });
 
     // Notify Target TL specifically
@@ -236,7 +244,7 @@ export const ApprovalManagement: React.FC = () => {
         recipientUserId: targetTlUser.id,
         targetRole: targetTlUser.role,
         title: `Pengajuan ${reqType} Baru (#${ticketNo})`,
-        message: `${currentUser.name} (${currentUser.role}) mengajukan permohonan ${reqType} ditujukan untuk Anda (${reqTargetTlRole}).`,
+        message: `${applicantUser.name} (${applicantUser.role}) mengajukan permohonan ${reqType} ditujukan untuk Anda (${reqTargetTlRole}).`,
         type: 'APPROVAL',
         linkRoute: 'approvals',
       });
@@ -246,7 +254,7 @@ export const ApprovalManagement: React.FC = () => {
     storageService.addNotification({
       targetRole: 'KOORDINATOR',
       title: `Pengajuan ${reqType} Baru (#${ticketNo})`,
-      message: `${currentUser.name} (${currentUser.role}) mengajukan permohonan ${reqType} dengan tujuan ${reqTargetTlRole}.`,
+      message: `${applicantUser.name} (${applicantUser.role}) mengajukan permohonan ${reqType} dengan tujuan ${reqTargetTlRole}.`,
       type: 'APPROVAL',
       linkRoute: 'approvals',
     });
@@ -311,12 +319,86 @@ export const ApprovalManagement: React.FC = () => {
           currentUser.id
         );
 
-        // Update Senada assignments shift code if exists
+        // Aturan Kategori Senada:
+        // Kategori melekat pada jadwal masuk petugas.
+        // - Jika tuker shift kerja (sama-sama masuk): kategori tidak terpengaruh, hanya shiftCode yang diupdate.
+        // - Jika pengajuan tukar libur: kategori berpindah sekaligus bersama slot jadwal masuk ke petugas yang bertugas menggantikan.
+        const isShiftAOff = ['X', 'C', 'I', 'S'].includes(shiftA);
+        const isShiftBOff = ['X', 'C', 'I', 'S'].includes(shiftB);
+        const isTukarLibur = isShiftAOff || isShiftBOff;
+
         const senadaList = storageService.getSenadaAssignments();
         const senA = senadaList.find(s => s.userId === selectedApproval.userId && s.date === dateA);
-        if (senA) senA.shiftCode = shiftB;
         const senB = senadaList.find(s => s.userId === selectedApproval.swapWithUserId && s.date === dateB);
-        if (senB) senB.shiftCode = shiftA;
+
+        const userAObj = allUsers.find(u => u.id === selectedApproval.userId);
+        const userBObj = allUsers.find(u => u.id === selectedApproval.swapWithUserId);
+
+        if (isTukarLibur) {
+          // Kasus Tukar Libur: Kategori ikut berpindah ke petugas yang sekarang masuk
+          // 1. Petugas A kini mendapat shiftB pada dateA:
+          if (['X', 'C', 'I', 'S'].includes(shiftB)) {
+            // Petugas A kini Libur pada dateA -> hapus penugasan Senada
+            const idx = senadaList.findIndex(s => s.userId === selectedApproval.userId && s.date === dateA);
+            if (idx >= 0) senadaList.splice(idx, 1);
+          } else {
+            // Petugas A kini MASUK pada dateA -> ambil kategori slot dinas (senB atau senA)
+            const cat = senB?.category || senA?.category || 'PM';
+            const idx = senadaList.findIndex(s => s.userId === selectedApproval.userId && s.date === dateA);
+            if (idx >= 0) {
+              senadaList[idx].shiftCode = shiftB;
+              senadaList[idx].category = cat;
+              senadaList[idx].updatedAt = new Date().toISOString();
+            } else if (userAObj) {
+              senadaList.push({
+                id: `sen-${userAObj.id}-${dateA}`,
+                userId: userAObj.id,
+                npp: userAObj.npp,
+                userName: userAObj.name,
+                teamId: userAObj.teamId,
+                date: dateA,
+                shiftCode: shiftB,
+                category: cat,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              });
+            }
+          }
+
+          // 2. Petugas B kini mendapat shiftA pada dateB:
+          if (['X', 'C', 'I', 'S'].includes(shiftA)) {
+            // Petugas B kini Libur pada dateB -> hapus penugasan Senada
+            const idx = senadaList.findIndex(s => s.userId === selectedApproval.swapWithUserId && s.date === dateB);
+            if (idx >= 0) senadaList.splice(idx, 1);
+          } else {
+            // Petugas B kini MASUK pada dateB -> ambil kategori slot dinas (senA atau senB)
+            const cat = senA?.category || senB?.category || 'PM';
+            const idx = senadaList.findIndex(s => s.userId === selectedApproval.swapWithUserId && s.date === dateB);
+            if (idx >= 0) {
+              senadaList[idx].shiftCode = shiftA;
+              senadaList[idx].category = cat;
+              senadaList[idx].updatedAt = new Date().toISOString();
+            } else if (userBObj) {
+              senadaList.push({
+                id: `sen-${userBObj.id}-${dateB}`,
+                userId: userBObj.id,
+                npp: userBObj.npp,
+                userName: userBObj.name,
+                teamId: userBObj.teamId,
+                date: dateB,
+                shiftCode: shiftA,
+                category: cat,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              });
+            }
+          }
+        } else {
+          // Tukar Shift kerja biasa: kategori tidak terpengaruh, hanya kode shift yang diperbarui
+          if (senA) senA.shiftCode = shiftB;
+          if (senB) senB.shiftCode = shiftA;
+        }
+
         storageService.saveSenadaAssignments(senadaList);
 
         // Audit Log for the swap
@@ -458,6 +540,7 @@ export const ApprovalManagement: React.FC = () => {
   const shiftOptions = Object.keys(shiftDefinitions);
 
   const selectedSwapPartner = allUsers.find(u => u.id === reqSwapUserId);
+  const selectedApplicant = allUsers.find(u => u.id === reqApplicantUserId) || currentUser;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -770,6 +853,51 @@ export const ApprovalManagement: React.FC = () => {
             </select>
           </div>
 
+          {/* Applicant Selection (Memilih Dirinya) */}
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+            <label className="block font-bold text-slate-800 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-slate-800 font-bold">
+                <User className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Petugas Pemohon (Pilih Nama Anda / Dirinya) *</span>
+              </span>
+              <span className="text-[10px] text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                Identitas Pemohon
+              </span>
+            </label>
+            <select
+              value={reqApplicantUserId}
+              onChange={e => {
+                const uid = e.target.value;
+                setReqApplicantUserId(uid);
+                const appUser = allUsers.find(u => u.id === uid);
+                if (appUser) {
+                  if (appUser.teamId === 'team-2') setReqTargetTlRole('TL 2');
+                  else if (appUser.teamId === 'team-3') setReqTargetTlRole('TL 3');
+                  else if (appUser.teamId === 'team-4') setReqTargetTlRole('TL 4');
+                  else if (appUser.teamId === 'team-5') setReqTargetTlRole('TL 5');
+                  else if (appUser.teamId === 'team-6') setReqTargetTlRole('TL 6');
+                  else setReqTargetTlRole('TL 1');
+                }
+                const uSched = schedules.find(s => s.userId === uid && s.date === reqStartDate);
+                if (uSched) setReqOriginalShiftA(uSched.shiftCode);
+              }}
+              className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-800 text-xs shadow-2xs"
+              required
+            >
+              <option value="">-- Pilih Nama Anda / Petugas Pemohon --</option>
+              {allUsers
+                .filter(u => u.status === 'Aktif')
+                .map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.npp} &bull; {u.role} &bull; {u.teamId})
+                  </option>
+                ))}
+            </select>
+            <p className="text-[11px] text-slate-500">
+              Pilih nama Anda dari daftar personil aktif yang mengajukan permohonan dinas.
+            </p>
+          </div>
+
           {/* Target TL Destination Input */}
           <div className="p-3.5 bg-indigo-50/70 rounded-xl border border-indigo-100 space-y-1.5">
             <label className="block font-bold text-slate-800 flex items-center justify-between">
@@ -809,30 +937,35 @@ export const ApprovalManagement: React.FC = () => {
                   <span>Detail Pertukaran Shift</span>
                 </span>
                 <span className="text-[11px] text-slate-500">
-                  Pemohon: <strong className="text-slate-700">{currentUser?.name}</strong>
+                  Pemohon: <strong className="text-slate-700">{selectedApplicant?.name || 'Pilih Nama Pemohon'}</strong>
                 </span>
               </div>
 
               {/* Section 1: Pemohon (Saya) */}
               <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2.5">
                 <div className="font-bold text-slate-700 text-[11px] uppercase tracking-wider text-indigo-600">
-                  1. Jadwal Petugas Pemohon (Saya)
+                  1. Jadwal Petugas Pemohon ({selectedApplicant?.name || 'Diri Anda'})
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Tanggal Dinas Saya *
+                      Tanggal Dinas Anda *
                     </label>
                     <input
                       type="date"
                       value={reqStartDate}
-                      onChange={e => setReqStartDate(e.target.value)}
+                      onChange={e => {
+                        const d = e.target.value;
+                        setReqStartDate(d);
+                        const uSched = schedules.find(s => s.userId === reqApplicantUserId && s.date === d);
+                        if (uSched) setReqOriginalShiftA(uSched.shiftCode);
+                      }}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
                     />
                   </div>
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Shift Awal Saya *
+                      Shift Awal Anda *
                     </label>
                     <select
                       value={reqOriginalShiftA}
@@ -852,12 +985,12 @@ export const ApprovalManagement: React.FC = () => {
               {/* Section 2: Rekan Petugas */}
               <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2.5">
                 <div className="font-bold text-slate-700 text-[11px] uppercase tracking-wider text-indigo-600">
-                  2. Petugas Rekan &amp; Shift yang Ditukar
+                  2. Petugas Rekan yang Akan Ditukar Jadwalnya
                 </div>
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Pilih Nama Petugas Rekan *
+                    Pilih Nama Petugas Rekan yang Akan Ditukar Jadwalnya *
                   </label>
                   <select
                     value={reqSwapUserId}
@@ -868,10 +1001,11 @@ export const ApprovalManagement: React.FC = () => {
                       if (pSched) setReqProposedShiftA(pSched.shiftCode);
                     }}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+                    required
                   >
-                    <option value="">-- Pilih Petugas Rekan yang Diajak Bertukar --</option>
+                    <option value="">-- Pilih Petugas Rekan yang Akan Ditukar --</option>
                     {allUsers
-                      .filter(u => u.id !== currentUser?.id && u.status === 'Aktif')
+                      .filter(u => u.id !== reqApplicantUserId && u.status === 'Aktif')
                       .map(u => (
                         <option key={u.id} value={u.id}>
                           {u.name} ({u.npp} &bull; {u.role} &bull; {u.teamId})
@@ -920,9 +1054,9 @@ export const ApprovalManagement: React.FC = () => {
               <div className="p-3 bg-indigo-50/80 rounded-xl border border-indigo-100 flex items-center justify-between text-xs">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-indigo-500 block">Pemohon</span>
-                  <span className="font-bold text-slate-800">{currentUser?.name}</span>
+                  <span className="font-bold text-slate-800">{selectedApplicant?.name || 'Belum dipilih'}</span>
                   <div className="text-[11px] text-slate-600">
-                    Tgl: <strong>{reqStartDate}</strong> &bull; Shift Awal: <strong className="text-indigo-700">{reqOriginalShiftA}</strong>
+                    Tgl: <strong>{reqStartDate}</strong> &bull; Shift: <strong className="text-indigo-700">{reqOriginalShiftA}</strong>
                   </div>
                 </div>
 
@@ -935,7 +1069,7 @@ export const ApprovalManagement: React.FC = () => {
                   <span className="text-[10px] uppercase font-bold text-indigo-500 block">Rekan Petugas</span>
                   <span className="font-bold text-slate-800">{selectedSwapPartner?.name || 'Belum dipilih'}</span>
                   <div className="text-[11px] text-slate-600">
-                    Tgl: <strong>{reqSwapDate}</strong> &bull; Shift Ditukar: <strong className="text-indigo-700">{reqProposedShiftA}</strong>
+                    Tgl: <strong>{reqSwapDate}</strong> &bull; Shift: <strong className="text-indigo-700">{reqProposedShiftA}</strong>
                   </div>
                 </div>
               </div>

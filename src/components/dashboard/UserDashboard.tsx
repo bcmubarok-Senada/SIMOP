@@ -23,9 +23,19 @@ export const UserDashboard: React.FC = () => {
   const [scheduleViewTab, setScheduleViewTab] = useState<'GRID' | 'TODAY_ROSTER'>('GRID');
   const [showShiftLegend, setShowShiftLegend] = useState(false);
 
-  if (!currentUser) return null;
+  const user = currentUser || {
+    id: 'guest',
+    npp: 'PUBLIK',
+    name: 'Petugas / Pengunjung',
+    role: 'PETUGAS' as const,
+    jabatan: 'Akses Portal Layanan',
+    teamId: 'team-1',
+    status: 'Aktif' as const,
+    email: '',
+  };
+  const isGuest = !currentUser;
 
-  const isPetugas = currentUser.role === 'PETUGAS';
+  const isPetugas = user.role === 'PETUGAS';
 
   const allUsers = storageService.getUsers();
   const schedules = storageService.getSchedules();
@@ -55,29 +65,29 @@ export const UserDashboard: React.FC = () => {
 
   // Today's schedule for current user
   const todaySchedule = useMemo(() => {
-    return schedules.find(s => s.userId === currentUser.id && s.date === today);
-  }, [schedules, currentUser.id, today]);
+    return schedules.find(s => s.userId === user.id && s.date === today);
+  }, [schedules, user.id, today]);
 
   // Tomorrow's schedule for current user
   const tomorrowSchedule = useMemo(() => {
-    return schedules.find(s => s.userId === currentUser.id && s.date === tomorrow);
-  }, [schedules, currentUser.id, tomorrow]);
+    return schedules.find(s => s.userId === user.id && s.date === tomorrow);
+  }, [schedules, user.id, tomorrow]);
 
   // Senada assignment today (for Petugas)
   const todaySenada = useMemo(() => {
     if (!isPetugas) return null;
-    return senadaAssignments.find(s => s.userId === currentUser.id && s.date === today);
-  }, [isPetugas, senadaAssignments, currentUser.id, today]);
+    return senadaAssignments.find(s => s.userId === user.id && s.date === today);
+  }, [isPetugas, senadaAssignments, user.id, today]);
 
   // User's approvals
   const myApprovals = useMemo(() => {
-    return approvals.filter(a => a.userId === currentUser.id);
-  }, [approvals, currentUser.id]);
+    return approvals.filter(a => a.userId === user.id);
+  }, [approvals, user.id]);
 
   // User's submissions
   const mySubmissions = useMemo(() => {
-    return submissions.filter(s => s.userId === currentUser.id);
-  }, [submissions, currentUser.id]);
+    return submissions.filter(s => s.userId === user.id);
+  }, [submissions, user.id]);
 
   // Available active exams (that user hasn't submitted up to max attempts)
   const availableExams = useMemo(() => {
@@ -118,7 +128,7 @@ export const UserDashboard: React.FC = () => {
         selectedTeam === 'ALL'
           ? true
           : selectedTeam === 'MY_TEAM'
-          ? u.teamId === currentUser.teamId
+          ? u.teamId === user.teamId
           : u.teamId === selectedTeam;
 
       const matchSearch =
@@ -128,7 +138,7 @@ export const UserDashboard: React.FC = () => {
 
       return matchTeam && matchSearch;
     });
-  }, [petugasUsers, selectedTeam, currentUser.teamId, searchQuery]);
+  }, [petugasUsers, selectedTeam, user.teamId, searchQuery]);
 
   // Helper date string for a specific day in selected month
   const getDateStr = (day: number) => {
@@ -171,13 +181,15 @@ export const UserDashboard: React.FC = () => {
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-indigo-200 text-xs font-medium mb-2">
               <ShieldCheck className="w-3.5 h-3.5 text-teal-300" />
-              <span>Portal Mandiri {currentUser.role} &bull; {currentUser.teamId}</span>
+              <span>{isGuest ? 'Portal Publik SIMOP & Senada' : `Portal Mandiri ${user.role} • ${user.teamId}`}</span>
             </div>
             <h2 className="text-2xl font-bold tracking-tight">
-              Halo, {currentUser.name}!
+              {isGuest ? 'Selamat Datang di Portal SIMOP Terpadu' : `Halo, ${user.name}!`}
             </h2>
             <p className="text-xs text-indigo-200 mt-1 max-w-xl">
-              Pantau jadwal dinas harian dan keseluruhan tim petugas, ajukan cuti atau tukar jadwal, dan ikuti uji pemahaman berkala untuk peningkatan kompetensi layanan Anda.
+              {isGuest
+                ? 'Akses terbuka: Pantau roster jadwal dinas harian seluruh tim, penugasan Senada, dan ajukan pertukaran jadwal secara langsung tanpa login.'
+                : 'Pantau jadwal dinas harian dan keseluruhan tim petugas, ajukan cuti atau tukar jadwal, dan ikuti uji pemahaman berkala untuk peningkatan kompetensi layanan Anda.'}
             </p>
           </div>
 
@@ -477,7 +489,7 @@ export const UserDashboard: React.FC = () => {
                   : 'bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100'
               }`}
             >
-              ★ Tim Saya ({currentUser.teamId})
+              ★ Tim Saya ({user.teamId})
             </button>
 
             {['team-1', 'team-2', 'team-3', 'team-4', 'team-5', 'team-6'].map((tId, idx) => (
@@ -558,7 +570,7 @@ export const UserDashboard: React.FC = () => {
                   {/* Body: Petugas Rows */}
                   <tbody>
                     {filteredPetugas.map(petugas => {
-                      const isSelf = petugas.id === currentUser.id;
+                      const isSelf = currentUser ? petugas.id === currentUser.id : false;
 
                       return (
                         <tr
@@ -739,7 +751,7 @@ export const UserDashboard: React.FC = () => {
 
                     <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                       {group.users.map(u => {
-                        const isCurrent = u.id === currentUser.id;
+                        const isCurrent = currentUser ? u.id === currentUser.id : false;
                         return (
                           <div
                             key={u.id}

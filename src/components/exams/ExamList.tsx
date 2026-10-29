@@ -19,8 +19,19 @@ export const ExamList: React.FC = () => {
   const allQuestions = storageService.getQuestions();
   const submissions = storageService.getExamSubmissions();
 
-  // Active exam taking state
+  // Active exam taking state & pre-registration (Requirement #5)
   const [activeRunningExam, setActiveRunningExam] = useState<Exam | null>(null);
+  const [isPreExamModalOpen, setIsPreExamModalOpen] = useState(false);
+  const [selectedExamToTake, setSelectedExamToTake] = useState<Exam | null>(null);
+  const [regName, setRegName] = useState(() => currentUser?.name || '');
+  const [regNpp, setRegNpp] = useState(() => currentUser?.npp || '');
+  const [regTeam, setRegTeam] = useState(() => currentUser?.teamId || 'team-1');
+  const [activeParticipant, setActiveParticipant] = useState<{
+    name: string;
+    npp: string;
+    teamId: string;
+    userId?: string;
+  } | null>(null);
 
   // Form Modal state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -137,19 +148,59 @@ export const ExamList: React.FC = () => {
     reloadData();
   };
 
-  // Check if current user has attempts for an exam
+  // Check attempts for an exam
   const getUserExamAttempts = (examId: string) => {
     if (!currentUser) return [];
     return submissions.filter(s => s.examId === examId && s.userId === currentUser.id);
   };
 
+  const handleInitiateExam = (exam: Exam) => {
+    setSelectedExamToTake(exam);
+    if (currentUser) {
+      setRegName(currentUser.name);
+      setRegNpp(currentUser.npp);
+      setRegTeam(currentUser.teamId);
+    } else {
+      setRegName('');
+      setRegNpp('');
+      setRegTeam('team-1');
+    }
+    setIsPreExamModalOpen(true);
+  };
+
+  const handleConfirmStartExam = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regName.trim()) {
+      addToast('Nama Lengkap peserta wajib diisi.', 'error');
+      return;
+    }
+    if (!regNpp.trim()) {
+      addToast('NPP peserta wajib diisi.', 'error');
+      return;
+    }
+    const cleanNpp = regNpp.trim().toUpperCase();
+    const cleanName = regName.trim();
+
+    setActiveParticipant({
+      name: cleanName,
+      npp: cleanNpp,
+      teamId: regTeam,
+      userId: currentUser?.id || `usr-npp-${cleanNpp.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+    });
+    setIsPreExamModalOpen(false);
+    setActiveRunningExam(selectedExamToTake);
+  };
+
   // If user is currently running an exam, render the ExamRunner view
-  if (activeRunningExam) {
+  if (activeRunningExam && activeParticipant) {
     return (
       <ExamRunner
         exam={activeRunningExam}
+        participant={activeParticipant}
         onFinish={() => {
           setActiveRunningExam(null);
+          setActiveParticipant(null);
+          setSelectedExamToTake(null);
           reloadData();
         }}
       />
@@ -314,7 +365,7 @@ export const ExamList: React.FC = () => {
                   {canTakeExam ? (
                     <button
                       type="button"
-                      onClick={() => setActiveRunningExam(exam)}
+                      onClick={() => handleInitiateExam(exam)}
                       className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
                     >
                       <PlayCircle className="w-4 h-4" />
@@ -507,6 +558,98 @@ export const ExamList: React.FC = () => {
               className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-sm"
             >
               Simpan Ujian
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal: Registrasi Identitas Peserta Uji Pemahaman (Nama & NPP) */}
+      <Modal
+        isOpen={isPreExamModalOpen}
+        onClose={() => setIsPreExamModalOpen(false)}
+        title="Registrasi Identitas Peserta Ujian"
+        maxWidth="md"
+      >
+        <form onSubmit={handleConfirmStartExam} className="space-y-4 text-xs">
+          <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-100 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-purple-600 text-white shrink-0 shadow-xs">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-800 text-sm">{selectedExamToTake?.title}</h4>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Durasi: <strong>{selectedExamToTake?.durationMinutes} Menit</strong> &bull; Total Soal: <strong>{selectedExamToTake?.questionIds.length} Butir</strong> &bull; Passing Grade: <strong>{selectedExamToTake?.passingGrade}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-[11px] leading-relaxed">
+            ⚠️ <strong>Perhatian:</strong> Silakan masukkan <strong>Nama Lengkap</strong> dan <strong>NPP</strong> Anda dengan benar sebelum memulai pengerjaan soal. Identitas ini akan tercatat dalam riwayat nilai dan papan peringkat (leaderboard).
+          </div>
+
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Nama Lengkap Peserta *
+              </label>
+              <input
+                type="text"
+                value={regName}
+                onChange={e => setRegName(e.target.value)}
+                placeholder="Contoh: Budi Santoso"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                NPP (Nomor Pokok Pegawai) *
+              </label>
+              <input
+                type="text"
+                value={regNpp}
+                onChange={e => setRegNpp(e.target.value)}
+                placeholder="Contoh: 230198"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Regu / Tim Operasional *
+              </label>
+              <select
+                value={regTeam}
+                onChange={e => setRegTeam(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              >
+                <option value="team-1">Tim 1</option>
+                <option value="team-2">Tim 2</option>
+                <option value="team-3">Tim 3</option>
+                <option value="team-4">Tim 4</option>
+                <option value="team-5">Tim 5</option>
+                <option value="team-6">Tim 6</option>
+                <option value="team-tl">Supervisi / Team Leader</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsPreExamModalOpen(false)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md shadow-purple-600/20 flex items-center gap-1.5"
+            >
+              <span>Mulai Ujian Sekarang</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </form>

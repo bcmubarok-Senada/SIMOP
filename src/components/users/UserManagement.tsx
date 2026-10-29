@@ -126,9 +126,9 @@ export const UserManagement: React.FC = () => {
     setFormName('');
     setFormEmail('');
     setFormNpp('');
-    setFormJabatan('Petugas Layanan');
-    setFormTeamId('team-1');
-    setFormRole('PETUGAS');
+    setFormJabatan('Administrator Operasional');
+    setFormTeamId('team-tl');
+    setFormRole('KOORDINATOR');
     setFormStatus('Aktif');
     setFormAvatarUrl('');
     setFormPassword('');
@@ -192,6 +192,11 @@ export const UserManagement: React.FC = () => {
 
     if (!formId && !formPassword) {
       setFormErrors('Password wajib diisi untuk pengguna baru.');
+      return;
+    }
+
+    if (!formId && formRole === 'PETUGAS') {
+      setFormErrors('Aplikasi ini bersifat publik tanpa login user petugas. Penambahan akun baru hanya untuk akun berstatus Administrator (Master, Koordinator, TL, QA).');
       return;
     }
 
@@ -463,10 +468,10 @@ export const UserManagement: React.FC = () => {
             <span>Manajemen Akses &amp; Personil</span>
           </div>
           <h2 className="text-2xl font-bold text-slate-800 tracking-tight">
-            Manajemen User
+            Manajemen User &amp; Hak Akses
           </h2>
           <p className="text-xs text-slate-500">
-            Kelola data personil, penugasan team, hak akses, dan kredensial akun secara terpusat.
+            Aplikasi bersifat publik tanpa login untuk petugas. Penambahan akun dikhususkan untuk Administrator (Master, Koordinator, TL, QA).
           </p>
         </div>
 
@@ -475,9 +480,10 @@ export const UserManagement: React.FC = () => {
             type="button"
             onClick={handleOpenAddModal}
             className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
+            title="Tambah Akun Administrator / Verifikator Baru"
           >
             <UserPlus className="w-4 h-4" />
-            <span>Tambah User</span>
+            <span>Tambah User Admin</span>
           </button>
 
           <button
@@ -723,11 +729,11 @@ export const UserManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal: Tambah / Edit User */}
+      {/* Modal: Tambah / Edit Administrator */}
       <Modal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
-        title={formId ? 'Edit Data Pengguna' : 'Tambah Pengguna Baru'}
+        title={formId ? 'Edit Data Administrator' : 'Tambah Akun Administrator Baru'}
         maxWidth="lg"
       >
         <form onSubmit={handleSaveUser} className="space-y-4 text-xs">
@@ -736,6 +742,13 @@ export const UserManagement: React.FC = () => {
               {formErrors}
             </div>
           )}
+
+          <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-900 text-xs flex items-start gap-2.5">
+            <Shield className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+            <div className="leading-relaxed text-[11px]">
+              <strong>Khusus Akun Administrator:</strong> Aplikasi SIMOP Terpadu dapat diakses langsung oleh seluruh personil operasional secara publik tanpa login. Form pendaftaran ini dikhususkan untuk akun berstatus Administrator (Master, Koordinator, Team Leader, QA).
+            </div>
+          </div>
 
           {/* Avatar Upload for Account */}
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3.5">
@@ -820,28 +833,27 @@ export const UserManagement: React.FC = () => {
                 type="text"
                 value={formJabatan}
                 onChange={e => setFormJabatan(e.target.value)}
-                placeholder="Petugas Layanan / TL / QA"
+                placeholder="Administrator / TL / QA"
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Role *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Role Administrator *</label>
               <select
                 value={formRole}
                 onChange={e => setFormRole(e.target.value as RoleType)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-bold text-slate-800"
               >
-                <option value="MASTER">MASTER (Pemilik Sistem)</option>
-                <option value="KOORDINATOR">KOORDINATOR (Admin)</option>
-                <option value="TL 1">TL 1 (Team Leader 1)</option>
-                <option value="TL 2">TL 2 (Team Leader 2)</option>
-                <option value="TL 3">TL 3 (Team Leader 3)</option>
-                <option value="TL 4">TL 4 (Team Leader 4)</option>
-                <option value="TL 5">TL 5 (Team Leader 5)</option>
-                <option value="TL 6">TL 6 (Team Leader 6)</option>
+                <option value="MASTER">MASTER (Pemilik Sistem / Super Admin)</option>
+                <option value="KOORDINATOR">KOORDINATOR (Administrator Utama)</option>
+                <option value="TL 1">TL 1 (Team Leader 1 - Admin Shift 1)</option>
+                <option value="TL 2">TL 2 (Team Leader 2 - Admin Shift 2)</option>
+                <option value="TL 3">TL 3 (Team Leader 3 - Admin Shift 3)</option>
+                <option value="TL 4">TL 4 (Team Leader 4 - Admin Shift 4)</option>
+                <option value="TL 5">TL 5 (Team Leader 5 - Admin Shift 5)</option>
+                <option value="TL 6">TL 6 (Team Leader 6 - Admin Shift 6)</option>
                 <option value="QA">QA (Quality Assurance)</option>
-                <option value="PETUGAS">PETUGAS (Layanan)</option>
               </select>
             </div>
 

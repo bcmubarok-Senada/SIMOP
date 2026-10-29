@@ -15,13 +15,18 @@ import {
 import {
   Calendar, ChevronLeft, ChevronRight, Download, Upload,
   Printer, Copy, FileText, Check, AlertTriangle, Layers,
-  Search, SlidersHorizontal, RefreshCw, Plus, Trash2, Eye
+  Search, SlidersHorizontal, RefreshCw, Plus, Trash2, Eye,
+  History, KeyRound
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { ScheduleHistoryModal } from './ScheduleHistoryModal';
+import { AdminLoginModal } from '../auth/AdminLoginModal';
 
 export const ScheduleGrid: React.FC = () => {
   const { currentUser, addToast, refreshData } = useAuth();
   const isAdmin = currentUser ? isAdminRole(currentUser.role) : false;
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
 
   // Selected schedule category tab: PETUGAS, TL, QA
   const [scheduleCategory, setScheduleCategory] = useState<ScheduleCategory>(() => {
@@ -145,9 +150,17 @@ export const ScheduleGrid: React.FC = () => {
     return act.shiftCode !== base.shiftCode;
   };
 
-  // Cell click edit
+  // Cell click edit - only Admin status can edit
   const handleCellClick = (userId: string, day: number) => {
-    if (!isAdmin || viewMode === 'BASELINE') return;
+    if (viewMode === 'BASELINE') return;
+    if (!isAdmin) {
+      addToast(
+        'Perubahan jadwal langsung hanya dapat dilakukan oleh akun berstatus Admin. Silakan masuk sebagai Admin atau gunakan Pengajuan Perubahan Jadwal.',
+        'warning'
+      );
+      setIsAdminLoginModalOpen(true);
+      return;
+    }
     const dateStr = getDateStr(day);
     setActiveCell({ userId, date: dateStr });
   };
@@ -415,6 +428,17 @@ export const ScheduleGrid: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Riwayat Perubahan Jadwal (Visible to all users) */}
+          <button
+            type="button"
+            onClick={() => setIsHistoryModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded-xl text-xs font-bold transition shadow-2xs"
+            title="Lihat catatan kronologis semua perubahan dan pertukaran jadwal"
+          >
+            <History className="w-3.5 h-3.5 text-amber-600" />
+            <span>Riwayat Perubahan Jadwal</span>
+          </button>
+
           {isAdmin && (
             <>
               <button
@@ -1257,6 +1281,18 @@ export const ScheduleGrid: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Schedule History Modal */}
+      <ScheduleHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+      />
+
+      {/* Admin Authentication Modal */}
+      <AdminLoginModal
+        isOpen={isAdminLoginModalOpen}
+        onClose={() => setIsAdminLoginModalOpen(false)}
+      />
     </div>
   );
 };

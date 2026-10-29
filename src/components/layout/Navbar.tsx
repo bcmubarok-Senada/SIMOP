@@ -3,10 +3,11 @@ import { useAuth } from '../../context/AuthContext';
 import { getRoleBadgeClass, isAdminRole } from '../../utils/constants';
 import {
   Bell, LogOut, User as UserIcon, CheckCheck,
-  Menu, Camera, Trash2, Upload, Cloud
+  Menu, Camera, Trash2, Upload, Cloud, KeyRound
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { SimopLogo } from '../ui/SimopLogo';
+import { AdminLoginModal } from '../auth/AdminLoginModal';
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -26,9 +27,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  if (!currentUser) return null;
 
   const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -84,7 +84,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
                 <span className="text-xs font-semibold text-slate-600">Sistem Operasional Petugas</span>
               </h1>
               <p className="text-[11px] text-slate-500 font-medium">
-                {currentUser.role === 'MASTER'
+                {!currentUser
+                  ? 'Mode Akses: Publik (Bebas Login)'
+                  : currentUser.role === 'MASTER'
                   ? '👑 Hak Akses: Pemilik Sistem (Master Owner)'
                   : isAdminRole(currentUser.role)
                   ? 'Mode Akses: Administrator'
@@ -185,64 +187,84 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
 
           <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />
 
-          {/* User Profile Pill */}
-          <button
-            type="button"
-            onClick={() => setShowProfileModal(true)}
-            className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl hover:bg-slate-100 transition-colors"
-          >
-            {currentUser.avatarUrl ? (
-              <img
-                src={currentUser.avatarUrl}
-                alt={currentUser.name}
-                className="w-8 h-8 rounded-full object-cover shadow-xs border border-indigo-200"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                {currentUser.name.charAt(0)}
-              </div>
-            )}
-            <div className="text-left hidden md:block">
-              <div className="text-xs font-bold text-slate-800 leading-tight">
-                {currentUser.name}
-              </div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold ${getRoleBadgeClass(currentUser.role)}`}>
-                  {currentUser.role}
-                </span>
-                <span className="text-[10px] text-slate-400">NPP: {currentUser.npp}</span>
-              </div>
-            </div>
-          </button>
+          {/* User Profile Pill or Admin Login Button */}
+          {currentUser ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(true)}
+                className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                {currentUser.avatarUrl ? (
+                  <img
+                    src={currentUser.avatarUrl}
+                    alt={currentUser.name}
+                    className="w-8 h-8 rounded-full object-cover shadow-xs border border-indigo-200"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                    {currentUser.name.charAt(0)}
+                  </div>
+                )}
+                <div className="text-left hidden md:block">
+                  <div className="text-xs font-bold text-slate-800 leading-tight">
+                    {currentUser.name}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold ${getRoleBadgeClass(currentUser.role)}`}>
+                      {currentUser.role}
+                    </span>
+                    <span className="text-[10px] text-slate-400">NPP: {currentUser.npp}</span>
+                  </div>
+                </div>
+              </button>
 
-          {/* Logout Button */}
-          <button
-            type="button"
-            onClick={logout}
-            title="Keluar / Logout"
-            className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
+              {/* Logout Button */}
+              <button
+                type="button"
+                onClick={logout}
+                title="Keluar / Logout"
+                className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowAdminLoginModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold shadow-xs transition"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-amber-300" />
+              <span>Masuk Sebagai Admin</span>
+            </button>
+          )}
         </div>
       </header>
 
+      {/* Admin Login Modal */}
+      <AdminLoginModal
+        isOpen={showAdminLoginModal}
+        onClose={() => setShowAdminLoginModal(false)}
+      />
+
       {/* User Profile Details Modal */}
       <Modal
-        isOpen={showProfileModal}
+        isOpen={showProfileModal && !!currentUser}
         onClose={() => setShowProfileModal(false)}
         title="Profil Pengguna & Foto"
         maxWidth="md"
       >
-        <div className="space-y-4 text-sm">
-          {/* Hidden File Input */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleAvatarFileChange}
-            accept="image/*"
-            className="hidden"
-          />
+        {currentUser && (
+          <div className="space-y-4 text-sm">
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleAvatarFileChange}
+              accept="image/*"
+              className="hidden"
+            />
 
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100">
             <div className="relative group shrink-0">
@@ -333,16 +355,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
             </div>
           </div>
 
-          <div className="pt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={() => setShowProfileModal(false)}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-xs transition"
-            >
-              Tutup
-            </button>
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-xs transition"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </Modal>
     </>
   );

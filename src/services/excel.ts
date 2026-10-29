@@ -159,6 +159,46 @@ export function exportSenadaToExcel(assignments: SenadaAssignment[], filename = 
   downloadWorkbook(workbook, filename);
 }
 
+export function exportSenadaMatrixToExcel(
+  assignments: SenadaAssignment[],
+  schedules: ScheduleEntry[],
+  users: User[],
+  year: number,
+  month: number,
+  filename = 'Jadwal_Kategori_Senada.xlsx'
+): void {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const rows: any[] = [];
+
+  users.forEach((user, idx) => {
+    const row: any = {
+      'No': idx + 1,
+      'NPP': user.npp,
+      'Nama Petugas': user.name,
+      'Team': user.teamId,
+    };
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const sched = schedules.find(s => s.userId === user.id && s.date === dateStr);
+      const shiftCode = sched ? sched.shiftCode : 'X';
+      const isOff = ['X', 'C', 'I', 'S'].includes(shiftCode);
+      if (isOff) {
+        row[`Tgl_${d}`] = shiftCode === 'X' ? 'X (Libur)' : shiftCode;
+      } else {
+        const senada = assignments.find(a => a.userId === user.id && a.date === dateStr);
+        row[`Tgl_${d}`] = senada ? `${shiftCode} [${senada.category}]` : `${shiftCode} [Belum Plot]`;
+      }
+    }
+    rows.push(row);
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Kategori_Senada');
+  downloadWorkbook(workbook, filename);
+}
+
 export function downloadSenadaTemplate(): void {
   const sample = [
     {

@@ -48,7 +48,8 @@ export const Leaderboard: React.FC = () => {
     const userBestMap = new Map<string, ExamSubmission>();
 
     filtered.forEach(sub => {
-      const key = `${sub.userId}-${selectedExamId === 'ALL' ? 'global' : sub.examId}`;
+      const identifier = sub.userNpp?.trim() || sub.userId;
+      const key = `${identifier}-${selectedExamId === 'ALL' ? 'global' : sub.examId}`;
       const existing = userBestMap.get(key);
 
       if (!existing) {
